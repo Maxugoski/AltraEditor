@@ -24,6 +24,7 @@ import {
   CheckCircle2,
   RefreshCw,
   Eye,
+  GripVertical,
 } from 'lucide-react';
 
 type SidebarTab = 'media' | 'text' | 'audio' | 'ai' | 'effects';
@@ -372,8 +373,16 @@ export const Sidebar: React.FC = () => {
               <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Quick Demos</span>
               <div className="grid grid-cols-2 gap-2">
                 <button
+                  draggable={true}
+                  onDragStart={(e) => {
+                    const asset = createSyntheticVideoAsset('Cyberpunk Neon Visual', 'cyberpunk');
+                    addMediaAsset(asset);
+                    e.dataTransfer.setData('application/altra-asset', JSON.stringify(asset));
+                    e.dataTransfer.effectAllowed = 'copy';
+                  }}
                   onClick={() => handleAddSyntheticDemo('cyberpunk')}
-                  className="p-2.5 rounded-lg bg-gradient-to-br from-indigo-950/60 to-purple-950/60 hover:from-indigo-900/60 hover:to-purple-900/60 border border-indigo-500/30 text-left transition flex flex-col gap-1"
+                  className="p-2.5 rounded-lg bg-gradient-to-br from-indigo-950/60 to-purple-950/60 hover:from-indigo-900/60 hover:to-purple-900/60 border border-indigo-500/30 text-left transition flex flex-col gap-1 cursor-grab active:cursor-grabbing"
+                  title="Click or drag directly onto timeline"
                 >
                   <span className="text-xs font-medium text-indigo-300 flex items-center gap-1">
                     <Film className="w-3.5 h-3.5" /> Cyberpunk
@@ -381,8 +390,16 @@ export const Sidebar: React.FC = () => {
                   <span className="text-[10px] text-slate-400">Synth Neon Canvas</span>
                 </button>
                 <button
+                  draggable={true}
+                  onDragStart={(e) => {
+                    const asset = createSyntheticVideoAsset('Green Screen Demo Subject', 'chroma-demo');
+                    addMediaAsset(asset);
+                    e.dataTransfer.setData('application/altra-asset', JSON.stringify(asset));
+                    e.dataTransfer.effectAllowed = 'copy';
+                  }}
                   onClick={() => handleAddSyntheticDemo('chroma-demo')}
-                  className="p-2.5 rounded-lg bg-gradient-to-br from-emerald-950/60 to-teal-950/60 hover:from-emerald-900/60 hover:to-teal-900/60 border border-emerald-500/30 text-left transition flex flex-col gap-1"
+                  className="p-2.5 rounded-lg bg-gradient-to-br from-emerald-950/60 to-teal-950/60 hover:from-emerald-900/60 hover:to-teal-900/60 border border-emerald-500/30 text-left transition flex flex-col gap-1 cursor-grab active:cursor-grabbing"
+                  title="Click or drag directly onto timeline"
                 >
                   <span className="text-xs font-medium text-emerald-300 flex items-center gap-1">
                     <Video className="w-3.5 h-3.5" /> Chroma Key
@@ -398,6 +415,7 @@ export const Sidebar: React.FC = () => {
                 <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
                   Project Assets ({mediaAssets.length})
                 </span>
+                <span className="text-[10px] text-slate-500">Drag items to timeline</span>
               </div>
 
               {mediaAssets.length === 0 ? (
@@ -409,17 +427,24 @@ export const Sidebar: React.FC = () => {
                   {mediaAssets.map((asset) => (
                     <div
                       key={asset.id}
-                      className="group p-2 rounded-lg bg-editor-surface2 border border-editor-border hover:border-indigo-500/40 flex items-center justify-between gap-3 transition"
+                      draggable={true}
+                      onDragStart={(e) => {
+                        e.dataTransfer.setData('application/altra-asset', JSON.stringify(asset));
+                        e.dataTransfer.effectAllowed = 'copy';
+                      }}
+                      className="group p-2 rounded-lg bg-editor-surface2 border border-editor-border hover:border-indigo-500/40 flex items-center justify-between gap-3 transition cursor-grab active:cursor-grabbing"
+                      title="Drag directly into timeline track or click + to add"
                     >
-                      <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <GripVertical className="w-3.5 h-3.5 text-slate-500 group-hover:text-slate-300 flex-shrink-0" />
                         {asset.thumbnailUrl ? (
                           <img
                             src={asset.thumbnailUrl}
                             alt={asset.name}
-                            className="w-12 h-8 rounded object-cover bg-black flex-shrink-0"
+                            className="w-12 h-8 rounded object-cover bg-black flex-shrink-0 pointer-events-none"
                           />
                         ) : (
-                          <div className="w-12 h-8 rounded bg-slate-800 flex items-center justify-center flex-shrink-0 text-slate-400">
+                          <div className="w-12 h-8 rounded bg-slate-800 flex items-center justify-center flex-shrink-0 text-slate-400 pointer-events-none">
                             {asset.type === 'video' ? (
                               <Video className="w-4 h-4" />
                             ) : asset.type === 'audio' ? (
@@ -464,21 +489,40 @@ export const Sidebar: React.FC = () => {
         {/* TEXT TAB */}
         {activeTab === 'text' && (
           <div className="flex flex-col gap-4">
-            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Title & Text Presets</span>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Title & Text Presets</span>
+              <span className="text-[10px] text-slate-500">Drag to timeline</span>
+            </div>
             <div className="flex flex-col gap-2.5">
               {textPresets.map((preset, idx) => (
                 <div
                   key={idx}
+                  draggable={true}
+                  onDragStart={(e) => {
+                    const presetClip = {
+                      name: preset.name,
+                      type: 'text',
+                      textContent: preset.text,
+                      textStyle: preset.style,
+                      durationMs: 4000,
+                    };
+                    e.dataTransfer.setData('application/altra-clip', JSON.stringify(presetClip));
+                    e.dataTransfer.effectAllowed = 'copy';
+                  }}
                   onClick={() => handleAddTextPreset(preset)}
-                  className="p-3 rounded-lg bg-editor-surface2 border border-editor-border hover:border-indigo-500/50 hover:bg-editor-surface2/80 cursor-pointer transition flex flex-col gap-2 group"
+                  className="p-3 rounded-lg bg-editor-surface2 border border-editor-border hover:border-indigo-500/50 hover:bg-editor-surface2/80 cursor-grab active:cursor-grabbing transition flex flex-col gap-2 group"
+                  title="Click or drag directly onto text track"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-slate-200">{preset.name}</span>
+                    <div className="flex items-center gap-1.5">
+                      <GripVertical className="w-3.5 h-3.5 text-slate-500 group-hover:text-slate-300" />
+                      <span className="text-xs font-semibold text-slate-200">{preset.name}</span>
+                    </div>
                     <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 font-medium">
                       {preset.tag}
                     </span>
                   </div>
-                  <div className="h-12 bg-black/40 rounded flex items-center justify-center border border-slate-800/60 overflow-hidden">
+                  <div className="h-12 bg-black/40 rounded flex items-center justify-center border border-slate-800/60 overflow-hidden pointer-events-none">
                     <span
                       style={{
                         fontFamily: preset.style.fontFamily,
@@ -494,7 +538,7 @@ export const Sidebar: React.FC = () => {
                       {preset.text}
                     </span>
                   </div>
-                  <button className="text-[11px] text-indigo-400 group-hover:text-indigo-300 font-medium flex items-center gap-1 justify-end">
+                  <button className="text-[11px] text-indigo-400 group-hover:text-indigo-300 font-medium flex items-center gap-1 justify-end pointer-events-none">
                     <Plus className="w-3 h-3" /> Add to Timeline
                   </button>
                 </div>
@@ -506,7 +550,10 @@ export const Sidebar: React.FC = () => {
         {/* AUDIO TAB */}
         {activeTab === 'audio' && (
           <div className="flex flex-col gap-4">
-            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Audio Tracks & SFX</span>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Audio Tracks & SFX</span>
+              <span className="text-[10px] text-slate-500">Drag to timeline</span>
+            </div>
             <div className="flex flex-col gap-2">
               {[
                 { title: 'Synthwave Midnight Loop', dur: '15s', bpm: '128 BPM' },
@@ -516,14 +563,27 @@ export const Sidebar: React.FC = () => {
               ].map((item, idx) => (
                 <div
                   key={idx}
-                  className="p-2.5 rounded-lg bg-editor-surface2 border border-editor-border hover:border-emerald-500/40 flex items-center justify-between transition"
+                  draggable={true}
+                  onDragStart={(e) => {
+                    const audioClip = {
+                      name: item.title,
+                      type: 'audio',
+                      durationMs: 14000,
+                      waveform: [0.3, 0.6, 0.8, 0.4, 0.7, 0.9, 0.5, 0.8, 0.3, 0.6],
+                    };
+                    e.dataTransfer.setData('application/altra-clip', JSON.stringify(audioClip));
+                    e.dataTransfer.effectAllowed = 'copy';
+                  }}
+                  className="p-2.5 rounded-lg bg-editor-surface2 border border-editor-border hover:border-emerald-500/40 flex items-center justify-between transition cursor-grab active:cursor-grabbing group"
+                  title="Click + or drag directly onto audio track"
                 >
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <GripVertical className="w-3.5 h-3.5 text-slate-500 group-hover:text-slate-300 flex-shrink-0" />
+                    <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center flex-shrink-0">
                       <Music className="w-4 h-4" />
                     </div>
-                    <div className="flex flex-col">
-                      <span className="text-xs font-medium text-slate-200">{item.title}</span>
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-xs font-medium text-slate-200 truncate">{item.title}</span>
                       <span className="text-[10px] text-slate-400">{item.dur} • {item.bpm}</span>
                     </div>
                   </div>
@@ -540,7 +600,7 @@ export const Sidebar: React.FC = () => {
                         waveform: [0.3, 0.6, 0.8, 0.4, 0.7, 0.9, 0.5, 0.8, 0.3, 0.6],
                       });
                     }}
-                    className="p-1.5 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white transition"
+                    className="p-1.5 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white transition flex-shrink-0"
                     title="Add to Audio Track"
                   >
                     <Plus className="w-3.5 h-3.5" />

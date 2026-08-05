@@ -5,6 +5,8 @@ import { useEditorStore } from '@/store/useEditorStore';
 import { TrackList } from './TrackList';
 import { TrackItem } from './TrackItem';
 import { msToPx, pxToMs, formatTimecode, snapTime } from '@/lib/utils/time';
+import { inspectMediaFile } from '@/lib/utils/media';
+import { MediaAsset } from '@/types/editor';
 import {
   Scissors,
   Copy,
@@ -29,6 +31,8 @@ export const TimelineContainer: React.FC = () => {
     removeClip,
     duplicateClip,
     fps,
+    addClip,
+    addMediaAsset,
   } = useEditorStore();
 
   const rulerRef = useRef<HTMLDivElement>(null);
@@ -87,6 +91,100 @@ export const TimelineContainer: React.FC = () => {
       window.removeEventListener('mouseup', handleMouseUp);
     };
   }, [isScrubbing, zoom, durationMs, setPlayhead]);
+
+  // Fallback Drag-and-Drop on timeline container if dropped outside specific track lane
+  const handleContainerDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+  };
+
+  const handleContainerDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    if (!scrollContainerRef.current) return;
+
+    const rect = scrollContainerRef.current.getBoundingClientRect();
+    const scrollLeft = scrollContainerRef.current.scrollLeft;
+    const clickX = e.clientX - rect.left + scrollLeft;
+    let dropMs = Math.max(0, pxToMs(clickX, zoom));
+
+    if (isSnapping) {
+      const snapPoints = [0, durationMs];
+      tracks.forEach((t) => {
+        t.clips.forEach((c) => {
+          snapPoints.push(c.startMs);
+          snapPoints.push(c.startMs + c.durationMs);
+        });
+      });
+      const snapThresholdMs = pxToMs(12, zoom);
+      const { snappedTime } = snapTime(dropMs, snapPoints, snapThresholdMs);
+      dropMs = snappedTime;
+    }
+
+    // 1. Internal media asset dropped from Media Bin
+    const assetJson = e.dataTransfer.getData('application/altra-asset');
+    if (assetJson) {
+      try {
+        const asset: MediaAsset = JSON.parse(assetJson);
+        let targetTrack = tracks.find((t) => t.type === asset.type);
+        if (!targetTrack) {
+          targetTrack = tracks.find((t) => t.type === 'video') || tracks[0];
+        }
+        if (targetTrack) {
+          addClip(
+            targetTrack.id,
+            {
+              name: asset.name,
+              type: asset.type,
+              src: asset.src,
+              durationMs: asset.durationMs || 5000,
+              sourceDurationMs: asset.durationMs || 5000,
+              thumbnail: asset.thumbnailUrl,
+              waveform: asset.waveform,
+            },
+            dropMs
+          );
+        }
+        return;
+      } catch (err) {
+        console.error('Error handling container dropped asset:', err);
+      }
+    }
+
+    // 2. External media files dropped from Windows Explorer / Desktop
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      let currentDropMs = dropMs;
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        try {
+          const asset = await inspectMediaFile(file);
+          addMediaAsset(asset);
+          let targetTrack = tracks.find((t) => t.type === asset.type);
+          if (!targetTrack) {
+            targetTrack = tracks.find((t) => t.type === 'video') || tracks[0];
+          }
+          if (targetTrack) {
+            addClip(
+              targetTrack.id,
+              {
+                name: asset.name,
+                type: asset.type,
+                src: asset.src,
+                durationMs: asset.durationMs || 5000,
+                sourceDurationMs: asset.durationMs || 5000,
+                thumbnail: asset.thumbnailUrl,
+                waveform: asset.waveform,
+              },
+              currentDropMs
+            );
+            currentDropMs += asset.durationMs || 5000;
+          }
+        } catch (err) {
+          console.warn('Fallback container drop import:', err);
+        }
+      }
+    }
+  };
 
   // Generate ruler ticks (every 1s or 5s depending on zoom)
   const totalSeconds = Math.ceil(durationMs / 1000) + 5;
@@ -194,6 +292,8 @@ export const TimelineContainer: React.FC = () => {
         {/* Right: Scrollable Timeline Tracks & Ruler */}
         <div
           ref={scrollContainerRef}
+          onDragOver={handleContainerDragOver}
+          onDrop={handleContainerDrop}
           className="flex-1 overflow-x-auto overflow-y-auto relative custom-scrollbar bg-editor-timelineBg"
         >
           <div
@@ -273,7 +373,7 @@ export const TimelineContainer: React.FC = () => {
             {/* TRACK LANES */}
             <div className="flex flex-col flex-1">
               {tracks.map((track) => (
-                <TrackItem key={track.id} track={track} />
+                <TrackItem key={track.id} track={track} isSnapping={isSnapping} />
               ))}
             </div>
           </div>

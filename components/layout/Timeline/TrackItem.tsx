@@ -1,9 +1,11 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Track, Clip } from '@/types/editor';
+import { Track, Clip, MediaAsset } from '@/types/editor';
 import { useEditorStore } from '@/store/useEditorStore';
-import { msToPx, pxToMs, formatTimecode } from '@/lib/utils/time';
+import { msToPx, pxToMs, formatTimecode, snapTime } from '@/lib/utils/time';
+import { inspectMediaFile } from '@/lib/utils/media';
+import { generateSynthwaveAudioWavUrl } from '@/lib/audio/synthAudio';
 import {
   Film,
   Music,
@@ -13,13 +15,15 @@ import {
   Volume2,
   VolumeX,
   Sparkles,
+  ArrowDownCircle,
 } from 'lucide-react';
 
 interface TrackItemProps {
   track: Track;
+  isSnapping?: boolean;
 }
 
-export const TrackItem: React.FC<TrackItemProps> = ({ track }) => {
+export const TrackItem: React.FC<TrackItemProps> = ({ track, isSnapping = true }) => {
   const {
     zoom,
     selectedClipId,
@@ -27,7 +31,15 @@ export const TrackItem: React.FC<TrackItemProps> = ({ track }) => {
     updateClipTrim,
     moveClip,
     playheadMs,
+    tracks,
+    fps,
+    addClip,
+    addMediaAsset,
   } = useEditorStore();
+
+  const trackLaneRef = useRef<HTMLDivElement>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [dropIndicatorMs, setDropIndicatorMs] = useState<number | null>(null);
 
   const [draggingClipId, setDraggingClipId] = useState<string | null>(null);
   const [dragType, setDragType] = useState<'move' | 'trim-left' | 'trim-right' | null>(null);
@@ -110,6 +122,169 @@ export const TrackItem: React.FC<TrackItemProps> = ({ track }) => {
     };
   }, [draggingClipId, dragType, dragStartX, initialClipState, zoom, track.id, moveClip, updateClipTrim]);
 
+  // Compute snapped timestamp from clientX on track lane
+  const computeTimeFromClientX = (clientX: number): number => {
+    if (!trackLaneRef.current) return playheadMs;
+    const rect = trackLaneRef.current.getBoundingClientRect();
+    const clickX = clientX - rect.left;
+    let targetMs = Math.max(0, pxToMs(clickX, zoom));
+
+    if (isSnapping) {
+      const snapPoints = [0, playheadMs];
+      tracks.forEach((t) => {
+        t.clips.forEach((c) => {
+          snapPoints.push(c.startMs);
+          snapPoints.push(c.startMs + c.durationMs);
+        });
+      });
+      const snapThresholdMs = pxToMs(12, zoom);
+      const { snappedTime } = snapTime(targetMs, snapPoints, snapThresholdMs);
+      targetMs = snappedTime;
+    }
+    return targetMs;
+  };
+
+  // Drag-and-drop event handlers for dropping files & assets onto this track
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (track.locked) {
+      e.dataTransfer.dropEffect = 'none';
+      return;
+    }
+    e.dataTransfer.dropEffect = 'copy';
+
+    const targetMs = computeTimeFromClientX(e.clientX);
+    setIsDragOver(true);
+    setDropIndicatorMs(targetMs);
+  };
+
+  const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!track.locked) {
+      setIsDragOver(true);
+    }
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (
+      !trackLaneRef.current ||
+      !e.relatedTarget ||
+      !trackLaneRef.current.contains(e.relatedTarget as Node)
+    ) {
+      setIsDragOver(false);
+      setDropIndicatorMs(null);
+    }
+  };
+
+  const handleDrop = async (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+    setDropIndicatorMs(null);
+
+    if (track.locked) return;
+
+    const dropMs = computeTimeFromClientX(e.clientX);
+
+    // 1. Check for Media Asset dropped from Project Assets in Sidebar
+    const assetJson = e.dataTransfer.getData('application/altra-asset');
+    if (assetJson) {
+      try {
+        const asset: MediaAsset = JSON.parse(assetJson);
+        addClip(
+          track.id,
+          {
+            name: asset.name,
+            type: asset.type,
+            src: asset.src,
+            durationMs: asset.durationMs || 5000,
+            sourceDurationMs: asset.durationMs || 5000,
+            thumbnail: asset.thumbnailUrl,
+            waveform: asset.waveform,
+          },
+          dropMs
+        );
+        return;
+      } catch (err) {
+        console.error('Error adding dropped asset to track:', err);
+      }
+    }
+
+    // 2. Check for Clip Preset dropped from Sidebar (Text, Subtitle, Audio SFX)
+    const clipJson = e.dataTransfer.getData('application/altra-clip');
+    if (clipJson) {
+      try {
+        const clipData: Partial<Clip> = JSON.parse(clipJson);
+        if (clipData.type === 'audio' && !clipData.src) {
+          clipData.src = await generateSynthwaveAudioWavUrl(15);
+        }
+        addClip(track.id, clipData, dropMs);
+        return;
+      } catch (err) {
+        console.error('Error adding dropped clip preset to track:', err);
+      }
+    }
+
+    // 3. Check for external media files dropped directly from Windows Explorer / Desktop
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      let currentDropMs = dropMs;
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        try {
+          const asset = await inspectMediaFile(file);
+          addMediaAsset(asset);
+          addClip(
+            track.id,
+            {
+              name: asset.name,
+              type: asset.type,
+              src: asset.src,
+              durationMs: asset.durationMs || 5000,
+              sourceDurationMs: asset.durationMs || 5000,
+              thumbnail: asset.thumbnailUrl,
+              waveform: asset.waveform,
+            },
+            currentDropMs
+          );
+          currentDropMs += asset.durationMs || 5000;
+        } catch (err) {
+          console.warn('Fallback importing dropped file:', err);
+          const fallbackType = file.type.startsWith('audio')
+            ? 'audio'
+            : file.type.startsWith('image')
+            ? 'image'
+            : 'video';
+          const fallbackAsset: MediaAsset = {
+            id: `asset_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+            name: file.name,
+            type: fallbackType,
+            src: URL.createObjectURL(file),
+            durationMs: 5000,
+            sizeBytes: file.size,
+          };
+          addMediaAsset(fallbackAsset);
+          addClip(
+            track.id,
+            {
+              name: fallbackAsset.name,
+              type: fallbackAsset.type,
+              src: fallbackAsset.src,
+              durationMs: 5000,
+              sourceDurationMs: 5000,
+            },
+            currentDropMs
+          );
+          currentDropMs += 5000;
+        }
+      }
+    }
+  };
+
   const getClipColorClasses = (clip: Clip, isSelected: boolean) => {
     if (clip.type === 'video') {
       return isSelected
@@ -132,7 +307,36 @@ export const TrackItem: React.FC<TrackItemProps> = ({ track }) => {
   };
 
   return (
-    <div className="h-14 relative bg-editor-trackBg border-b border-editor-border/40 select-none flex items-center">
+    <div
+      ref={trackLaneRef}
+      onDragOver={handleDragOver}
+      onDragEnter={handleDragEnter}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+      className={`h-14 relative border-b select-none flex items-center transition-all ${
+        isDragOver
+          ? 'bg-indigo-950/50 border-indigo-400 ring-1 ring-inset ring-indigo-500/80'
+          : 'bg-editor-trackBg border-editor-border/40'
+      }`}
+    >
+      {/* Visual Drop Target Highlight & Placement Timecode Guide */}
+      {isDragOver && dropIndicatorMs !== null && (
+        <div
+          style={{ left: `${msToPx(dropIndicatorMs, zoom)}px` }}
+          className="absolute top-0 bottom-0 z-30 pointer-events-none flex flex-col items-center"
+        >
+          {/* Vertical alignment guide line */}
+          <div className="w-0.5 h-full bg-indigo-400 shadow-[0_0_10px_rgba(129,140,248,1)]" />
+
+          {/* Floating Timecode Pill */}
+          <div className="absolute -top-7 px-2 py-0.5 rounded-md bg-indigo-600 text-white font-mono text-[10px] font-bold whitespace-nowrap shadow-xl border border-indigo-400/50 flex items-center gap-1">
+            <ArrowDownCircle className="w-3 h-3 text-indigo-200" />
+            <span>Drop at {formatTimecode(dropIndicatorMs, fps)}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Render existing Track Clips */}
       {track.clips.map((clip) => {
         const leftPx = msToPx(clip.startMs, zoom);
         const widthPx = Math.max(20, msToPx(clip.durationMs, zoom));
