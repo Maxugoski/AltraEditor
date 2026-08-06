@@ -93,8 +93,9 @@ interface EditorStore extends ProjectState {
   removeClip: (clipId: string) => void;
   updateClip: (clipId: string, updates: Partial<Clip>) => void;
   updateClipTransform: (clipId: string, transform: Partial<Transform>) => void;
-  updateClipTrim: (clipId: string, startMs: number, durationMs: number, sourceStartMs: number) => void;
-  moveClip: (clipId: string, targetTrackId: string, newStartMs: number) => void;
+  updateClipTrim: (clipId: string, startMs: number, durationMs: number, sourceStartMs: number, saveUndo?: boolean) => void;
+  moveClip: (clipId: string, targetTrackId: string, newStartMs: number, saveUndo?: boolean) => void;
+  saveHistory: () => void;
   splitClipAtPlayhead: (clipId?: string) => void;
   duplicateClip: (clipId: string) => void;
   copyClip: (clipId?: string) => void;
@@ -398,7 +399,7 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
     set({ tracks: newTracks });
   },
 
-  updateClipTrim: (clipId, startMs, durationMs, sourceStartMs) => {
+  updateClipTrim: (clipId, startMs, durationMs, sourceStartMs, saveUndo = false) => {
     const { tracks, saveHistory } = get();
     const newTracks = tracks.map((track) => ({
       ...track,
@@ -416,10 +417,12 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
     }));
     const newDuration = calculateProjectDuration(newTracks);
     set({ tracks: newTracks, durationMs: newDuration });
-    saveHistory();
+    if (saveUndo) {
+      saveHistory();
+    }
   },
 
-  moveClip: (clipId, targetTrackId, newStartMs) => {
+  moveClip: (clipId, targetTrackId, newStartMs, saveUndo = false) => {
     const { tracks, saveHistory } = get();
     let movingClip: Clip | null = null;
 
@@ -451,7 +454,9 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
 
     const newDuration = calculateProjectDuration(finalTracks);
     set({ tracks: finalTracks, durationMs: newDuration });
-    saveHistory();
+    if (saveUndo) {
+      saveHistory();
+    }
   },
 
   splitClipAtPlayhead: (clipId) => {

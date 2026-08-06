@@ -16,6 +16,7 @@ import {
   VolumeX,
   Sparkles,
   ArrowDownCircle,
+  Magnet,
 } from 'lucide-react';
 
 interface TrackItemProps {
@@ -30,6 +31,7 @@ export const TrackItem: React.FC<TrackItemProps> = ({ track, isSnapping = true }
     selectClip,
     updateClipTrim,
     moveClip,
+    saveHistory,
     playheadMs,
     tracks,
     fps,
@@ -43,11 +45,19 @@ export const TrackItem: React.FC<TrackItemProps> = ({ track, isSnapping = true }
 
   const [draggingClipId, setDraggingClipId] = useState<string | null>(null);
   const [dragType, setDragType] = useState<'move' | 'trim-left' | 'trim-right' | null>(null);
-  const [dragStartX, setDragStartX] = useState<number>(0);
-  const [initialClipState, setInitialClipState] = useState<{
+  const [snapGuideMs, setSnapGuideMs] = useState<number | null>(null);
+
+  // Mutable ref for high-performance 60FPS dragging without React re-bind lag
+  const dragRef = useRef<{
+    clipId: string;
+    type: 'move' | 'trim-left' | 'trim-right';
+    startX: number;
+    startY: number;
     startMs: number;
     durationMs: number;
     sourceStartMs: number;
+    clipType: string;
+    targetTrackId: string;
   } | null>(null);
 
   const handleMouseDown = (
@@ -56,71 +66,140 @@ export const TrackItem: React.FC<TrackItemProps> = ({ track, isSnapping = true }
     type: 'move' | 'trim-left' | 'trim-right'
   ) => {
     e.stopPropagation();
+    // Critical: prevent browser native text/image drag-selection from hijacking mouse tracking
+    e.preventDefault();
     if (track.locked) return;
 
     selectClip(clip.id);
-    setDraggingClipId(clip.id);
-    setDragType(type);
-    setDragStartX(e.clientX);
-    setInitialClipState({
+    dragRef.current = {
+      clipId: clip.id,
+      type,
+      startX: e.clientX,
+      startY: e.clientY,
       startMs: clip.startMs,
       durationMs: clip.durationMs,
       sourceStartMs: clip.sourceStartMs,
-    });
+      clipType: clip.type,
+      targetTrackId: track.id,
+    };
+    setDraggingClipId(clip.id);
+    setDragType(type);
+
+    document.body.style.cursor = type === 'move' ? 'grabbing' : 'ew-resize';
+    document.body.style.userSelect = 'none';
   };
 
   useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!draggingClipId || !dragType || !initialClipState) return;
+    if (!draggingClipId) return;
 
-      const deltaPx = e.clientX - dragStartX;
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!dragRef.current) return;
+      const { clipId, type, startX, startMs, durationMs, sourceStartMs, clipType } = dragRef.current;
+
+      const deltaPx = e.clientX - startX;
       const deltaMs = pxToMs(deltaPx, zoom);
 
-      if (dragType === 'move') {
-        const newStartMs = Math.max(0, initialClipState.startMs + deltaMs);
-        moveClip(draggingClipId, track.id, Math.round(newStartMs));
-      } else if (dragType === 'trim-left') {
-        const potentialStart = initialClipState.startMs + deltaMs;
-        const potentialDuration = initialClipState.durationMs - deltaMs;
-        const potentialSourceStart = initialClipState.sourceStartMs + deltaMs;
+      if (type === 'move') {
+        let newStartMs = Math.max(0, startMs + deltaMs);
+
+        // Magnetic Snapping
+        let currentSnapGuide: number | null = null;
+        if (isSnapping) {
+          const snapPoints = [0, playheadMs];
+          tracks.forEach((t) => {
+            t.clips.forEach((c) => {
+              if (c.id !== clipId) {
+                snapPoints.push(c.startMs);
+                snapPoints.push(c.startMs + c.durationMs);
+              }
+            });
+          });
+          const snapThresholdMs = pxToMs(14, zoom);
+
+          // 1. Try snapping left edge
+          const snapLeft = snapTime(newStartMs, snapPoints, snapThresholdMs);
+          if (snapLeft.didSnap) {
+            newStartMs = snapLeft.snappedTime;
+            currentSnapGuide = snapLeft.snappedTime;
+          } else {
+            // 2. Try snapping right edge
+            const currentEndMs = newStartMs + durationMs;
+            const snapRight = snapTime(currentEndMs, snapPoints, snapThresholdMs);
+            if (snapRight.didSnap) {
+              newStartMs = Math.max(0, snapRight.snappedTime - durationMs);
+              currentSnapGuide = snapRight.snappedTime;
+            }
+          }
+        }
+        setSnapGuideMs(currentSnapGuide);
+
+        // Vertical Track Detection (move clips between tracks)
+        let targetTrackId = dragRef.current.targetTrackId;
+        const elem = document.elementFromPoint(e.clientX, e.clientY);
+        const trackLane = elem?.closest('[data-track-id]');
+        if (trackLane) {
+          const hoverTrackId = trackLane.getAttribute('data-track-id');
+          const hoverTrackType = trackLane.getAttribute('data-track-type');
+          if (hoverTrackId) {
+            const isAudioClip = clipType === 'audio';
+            const isTrackAudio = hoverTrackType === 'audio';
+            if ((isAudioClip && isTrackAudio) || (!isAudioClip && !isTrackAudio)) {
+              targetTrackId = hoverTrackId;
+              dragRef.current.targetTrackId = hoverTrackId;
+            }
+          }
+        }
+
+        // Fast update without adding hundreds of history steps
+        moveClip(clipId, targetTrackId, Math.round(newStartMs), false);
+      } else if (type === 'trim-left') {
+        const potentialStart = startMs + deltaMs;
+        const potentialDuration = durationMs - deltaMs;
+        const potentialSourceStart = sourceStartMs + deltaMs;
 
         if (potentialDuration >= 200 && potentialSourceStart >= 0) {
           updateClipTrim(
-            draggingClipId,
+            clipId,
             Math.round(potentialStart),
             Math.round(potentialDuration),
-            Math.round(potentialSourceStart)
+            Math.round(potentialSourceStart),
+            false
           );
         }
-      } else if (dragType === 'trim-right') {
-        const potentialDuration = initialClipState.durationMs + deltaMs;
+      } else if (type === 'trim-right') {
+        const potentialDuration = durationMs + deltaMs;
         if (potentialDuration >= 200) {
           updateClipTrim(
-            draggingClipId,
-            initialClipState.startMs,
+            clipId,
+            startMs,
             Math.round(potentialDuration),
-            initialClipState.sourceStartMs
+            sourceStartMs,
+            false
           );
         }
       }
     };
 
     const handleMouseUp = () => {
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      saveHistory(); // Single atomic history commit for undo/redo
+      dragRef.current = null;
       setDraggingClipId(null);
       setDragType(null);
-      setInitialClipState(null);
+      setSnapGuideMs(null);
     };
 
-    if (draggingClipId) {
-      window.addEventListener('mousemove', handleMouseMove);
-      window.addEventListener('mouseup', handleMouseUp);
-    }
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
 
     return () => {
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [draggingClipId, dragType, dragStartX, initialClipState, zoom, track.id, moveClip, updateClipTrim]);
+  }, [draggingClipId, zoom, isSnapping, playheadMs, tracks, moveClip, updateClipTrim, saveHistory]);
 
   // Compute snapped timestamp from clientX on track lane
   const computeTimeFromClientX = (clientX: number): number => {
@@ -285,7 +364,10 @@ export const TrackItem: React.FC<TrackItemProps> = ({ track, isSnapping = true }
     }
   };
 
-  const getClipColorClasses = (clip: Clip, isSelected: boolean) => {
+  const getClipColorClasses = (clip: Clip, isSelected: boolean, isDragging: boolean) => {
+    if (isDragging) {
+      return 'bg-indigo-600 text-white ring-2 ring-indigo-300 shadow-2xl scale-[1.01] z-40 opacity-95';
+    }
     if (clip.type === 'video') {
       return isSelected
         ? 'bg-blue-600/90 border-blue-400 text-white shadow-lg shadow-blue-500/20'
@@ -309,6 +391,8 @@ export const TrackItem: React.FC<TrackItemProps> = ({ track, isSnapping = true }
   return (
     <div
       ref={trackLaneRef}
+      data-track-id={track.id}
+      data-track-type={track.type}
       onDragOver={handleDragOver}
       onDragEnter={handleDragEnter}
       onDragLeave={handleDragLeave}
@@ -325,13 +409,24 @@ export const TrackItem: React.FC<TrackItemProps> = ({ track, isSnapping = true }
           style={{ left: `${msToPx(dropIndicatorMs, zoom)}px` }}
           className="absolute top-0 bottom-0 z-30 pointer-events-none flex flex-col items-center"
         >
-          {/* Vertical alignment guide line */}
           <div className="w-0.5 h-full bg-indigo-400 shadow-[0_0_10px_rgba(129,140,248,1)]" />
-
-          {/* Floating Timecode Pill */}
           <div className="absolute -top-7 px-2 py-0.5 rounded-md bg-indigo-600 text-white font-mono text-[10px] font-bold whitespace-nowrap shadow-xl border border-indigo-400/50 flex items-center gap-1">
             <ArrowDownCircle className="w-3 h-3 text-indigo-200" />
             <span>Drop at {formatTimecode(dropIndicatorMs, fps)}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Snap Alignment Guide Line */}
+      {snapGuideMs !== null && (
+        <div
+          style={{ left: `${msToPx(snapGuideMs, zoom)}px` }}
+          className="absolute top-0 bottom-0 z-40 pointer-events-none flex flex-col items-center"
+        >
+          <div className="w-0.5 h-full bg-cyan-400 shadow-[0_0_10px_rgba(34,211,238,1)]" />
+          <div className="absolute -top-6 px-1.5 py-0.5 rounded bg-cyan-600 text-white font-mono text-[9px] font-bold shadow-md flex items-center gap-0.5">
+            <Magnet className="w-2.5 h-2.5" />
+            <span>{formatTimecode(snapGuideMs, fps)}</span>
           </div>
         </div>
       )}
@@ -341,6 +436,7 @@ export const TrackItem: React.FC<TrackItemProps> = ({ track, isSnapping = true }
         const leftPx = msToPx(clip.startMs, zoom);
         const widthPx = Math.max(20, msToPx(clip.durationMs, zoom));
         const isSelected = selectedClipId === clip.id;
+        const isDraggingThisClip = draggingClipId === clip.id;
 
         return (
           <div
@@ -352,13 +448,24 @@ export const TrackItem: React.FC<TrackItemProps> = ({ track, isSnapping = true }
             }}
             className={`absolute top-1 bottom-1 rounded-md border flex flex-col justify-between overflow-hidden cursor-grab active:cursor-grabbing transition-shadow ${getClipColorClasses(
               clip,
-              isSelected
+              isSelected,
+              isDraggingThisClip
             )}`}
           >
+            {/* Live Dragging Timecode Pill */}
+            {isDraggingThisClip && dragType === 'move' && (
+              <div className="absolute -top-7 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded bg-indigo-600 text-white font-mono text-[10px] font-bold shadow-2xl border border-indigo-400/60 whitespace-nowrap pointer-events-none z-50 flex items-center gap-1">
+                <span>{formatTimecode(clip.startMs, fps)}</span>
+                <span className="text-indigo-200">→</span>
+                <span>{formatTimecode(clip.startMs + clip.durationMs, fps)}</span>
+              </div>
+            )}
+
             {/* Left Trim Handle */}
             <div
               onMouseDown={(e) => handleMouseDown(e, clip, 'trim-left')}
               className="absolute left-0 top-0 bottom-0 w-2.5 hover:w-3.5 bg-white/10 hover:bg-white/40 cursor-ew-resize transition-all z-10 flex items-center justify-center group"
+              title="Drag to trim start"
             >
               <div className="w-0.5 h-4 bg-white/60 rounded" />
             </div>
@@ -404,6 +511,7 @@ export const TrackItem: React.FC<TrackItemProps> = ({ track, isSnapping = true }
             <div
               onMouseDown={(e) => handleMouseDown(e, clip, 'trim-right')}
               className="absolute right-0 top-0 bottom-0 w-2.5 hover:w-3.5 bg-white/10 hover:bg-white/40 cursor-ew-resize transition-all z-10 flex items-center justify-center group"
+              title="Drag to trim end"
             >
               <div className="w-0.5 h-4 bg-white/60 rounded" />
             </div>
