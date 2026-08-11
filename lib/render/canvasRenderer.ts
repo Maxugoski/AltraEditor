@@ -258,25 +258,59 @@ export class CanvasRenderer {
     const media = this.getMediaElement(clip.src, clip.type);
 
     if (media) {
-      const sourceWidth = media instanceof HTMLVideoElement ? media.videoWidth || width : media.naturalWidth || width;
-      const sourceHeight = media instanceof HTMLVideoElement ? media.videoHeight || height : media.naturalHeight || height;
+      const sourceWidth = media instanceof HTMLVideoElement ? (media.videoWidth || width) : (media.naturalWidth || width);
+      const sourceHeight = media instanceof HTMLVideoElement ? (media.videoHeight || height) : (media.naturalHeight || height);
+
+      // Preserve natural aspect ratio
+      const sourceAspect = sourceWidth / sourceHeight;
+      const targetAspect = width / height;
+
+      let drawWidth = width;
+      let drawHeight = height;
+
+      const fitMode = clip.fitMode || 'contain';
+
+      if (fitMode === 'cover') {
+        // Scale proportionally to fill canvas completely
+        if (sourceAspect > targetAspect) {
+          drawHeight = height;
+          drawWidth = height * sourceAspect;
+        } else {
+          drawWidth = width;
+          drawHeight = width / sourceAspect;
+        }
+      } else {
+        // 'contain' (default): Fit entire media inside canvas without cropping or distortion
+        if (sourceAspect > targetAspect) {
+          drawWidth = width;
+          drawHeight = width / sourceAspect;
+        } else {
+          drawHeight = height;
+          drawWidth = height * sourceAspect;
+        }
+      }
+
+      const drawX = -drawWidth / 2;
+      const drawY = -drawHeight / 2;
 
       // Handle Chroma Keying
       if (clip.chromaKey && clip.chromaKey.enabled) {
         const offCanvas = this.offscreenCanvas;
         const offCtx = this.offscreenCtx;
-        offCanvas.width = width;
-        offCanvas.height = height;
-        offCtx.clearRect(0, 0, width, height);
-        offCtx.drawImage(media, -width / 2, -height / 2, width, height);
+        const iW = Math.max(1, Math.round(drawWidth));
+        const iH = Math.max(1, Math.round(drawHeight));
+        offCanvas.width = iW;
+        offCanvas.height = iH;
+        offCtx.clearRect(0, 0, iW, iH);
+        offCtx.drawImage(media, 0, 0, iW, iH);
 
-        const imgData = offCtx.getImageData(0, 0, width, height);
+        const imgData = offCtx.getImageData(0, 0, iW, iH);
         const keyedData = applyChromaKeyToImageData(imgData, clip.chromaKey);
         offCtx.putImageData(keyedData, 0, 0);
 
-        ctx.drawImage(offCanvas, -width / 2, -height / 2, width, height);
+        ctx.drawImage(offCanvas, drawX, drawY, drawWidth, drawHeight);
       } else {
-        ctx.drawImage(media, -width / 2, -height / 2, width, height);
+        ctx.drawImage(media, drawX, drawY, drawWidth, drawHeight);
       }
     } else {
       // Fallback placeholder pattern

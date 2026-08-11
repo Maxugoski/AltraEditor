@@ -178,6 +178,36 @@ export const Inspector: React.FC = () => {
             </button>
           </div>
 
+          {(selectedClip.type === 'video' || selectedClip.type === 'image') && (
+            <div className="space-y-1">
+              <label className="text-[10px] text-slate-400">Frame Fit</label>
+              <div className="grid grid-cols-2 gap-1.5 p-0.5 bg-editor-surface2 rounded-lg border border-editor-border">
+                <button
+                  type="button"
+                  onClick={() => updateClip(selectedClip.id, { fitMode: 'contain' })}
+                  className={`py-1 text-[10px] font-medium rounded-md transition ${
+                    (selectedClip.fitMode || 'contain') === 'contain'
+                      ? 'bg-indigo-600 text-white shadow-sm'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  Fit (Keep Ratio)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => updateClip(selectedClip.id, { fitMode: 'cover' })}
+                  className={`py-1 text-[10px] font-medium rounded-md transition ${
+                    selectedClip.fitMode === 'cover'
+                      ? 'bg-indigo-600 text-white shadow-sm'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  Fill (Crop)
+                </button>
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-2">
             <div className="space-y-1">
               <label className="text-[10px] text-slate-400">Pos X: {transform.x}px</label>

@@ -83,6 +83,7 @@ export interface Clip {
   
   // Visuals & Effects
   transform: Transform;
+  fitMode?: 'contain' | 'cover'; // default 'contain' (preserve aspect ratio)
   chromaKey: ChromaKeySettings;
   filters: FilterSettings;
   transitionIn?: Transition;
