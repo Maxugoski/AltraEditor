@@ -4,6 +4,7 @@ import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { useEditorStore } from '@/store/useEditorStore';
 import { CanvasRenderer } from '@/lib/render/canvasRenderer';
 import { formatTimecode } from '@/lib/utils/time';
+import { audioManager } from '@/lib/audio/audioManager';
 import {
   Play,
   Pause,
@@ -252,7 +253,10 @@ export const PreviewPlayer: React.FC = () => {
           </button>
 
           <button
-            onClick={togglePlay}
+            onClick={() => {
+              audioManager.unlock();
+              togglePlay();
+            }}
             className="w-9 h-9 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white flex items-center justify-center transition shadow-lg shadow-indigo-600/30 transform active:scale-95"
             title={isPlaying ? 'Pause (Space)' : 'Play (Space)'}
           >

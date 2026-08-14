@@ -1,5 +1,6 @@
 import { Clip, Track, SubtitleCue, Transform, TextStyle } from '@/types/editor';
 import { applyChromaKeyToImageData } from '@/lib/ai/chromaKey';
+import { audioManager } from '@/lib/audio/audioManager';
 
 interface RenderContext {
   canvas: HTMLCanvasElement;
@@ -42,16 +43,19 @@ export class CanvasRenderer {
 
     if (type === 'video') {
       const video = document.createElement('video');
-      video.crossOrigin = 'anonymous';
+      if (src.startsWith('http://') || src.startsWith('https://')) {
+        video.crossOrigin = 'anonymous';
+      }
       video.src = src;
-      video.muted = true;
       video.preload = 'auto';
       video.playsInline = true;
       this.mediaPool.set(src, video);
       return video;
     } else if (type === 'image') {
       const img = new Image();
-      img.crossOrigin = 'anonymous';
+      if (src.startsWith('http://') || src.startsWith('https://')) {
+        img.crossOrigin = 'anonymous';
+      }
       img.src = src;
       this.mediaPool.set(src, img);
       return img;
@@ -60,23 +64,39 @@ export class CanvasRenderer {
   }
 
   public syncMediaPlayback(tracks: Track[], playheadMs: number, isPlaying: boolean) {
+    const audioClipsToSync: Array<{
+      id: string;
+      src: string;
+      startMs: number;
+      durationMs: number;
+      sourceStartMs: number;
+      volume: number;
+      muted: boolean;
+      playbackRate: number;
+      trackVolume: number;
+      trackMuted: boolean;
+    }> = [];
+
     tracks.forEach((track) => {
       if (track.muted || !track.visible) return;
 
       track.clips.forEach((clip) => {
         const isActive = playheadMs >= clip.startMs && playheadMs <= clip.startMs + clip.durationMs;
-        const targetMediaTime = ((playheadMs - clip.startMs) * clip.playbackRate + clip.sourceStartMs) / 1000;
+        const targetMediaTime = ((playheadMs - clip.startMs) * (clip.playbackRate || 1) + clip.sourceStartMs) / 1000;
 
         if (clip.type === 'video') {
           const video = this.getMediaElement(clip.src, 'video') as HTMLVideoElement | null;
           if (video) {
             video.playbackRate = clip.playbackRate || 1;
-            video.volume = Math.min(1, Math.max(0, track.volume * clip.volume));
-            video.muted = clip.muted || track.muted;
+            const finalVol = (clip.muted || track.muted) ? 0 : Math.min(1, Math.max(0, track.volume * clip.volume));
+            video.volume = finalVol;
+            video.muted = clip.muted || track.muted || finalVol === 0;
 
             if (isActive) {
               if (Math.abs(video.currentTime - targetMediaTime) > 0.25) {
-                video.currentTime = Math.max(0, targetMediaTime);
+                try {
+                  video.currentTime = Math.max(0, targetMediaTime);
+                } catch {}
               }
               if (isPlaying) {
                 if (video.paused) {
@@ -90,46 +110,34 @@ export class CanvasRenderer {
             }
           }
         } else if (clip.type === 'audio') {
-          if (!clip.src) return;
-          let audio = this.audioPool.get(clip.id);
-          if (!audio) {
-            audio = new Audio(clip.src);
-            audio.crossOrigin = 'anonymous';
-            audio.preload = 'auto';
-            this.audioPool.set(clip.id, audio);
-          }
-          audio.volume = Math.min(1, Math.max(0, track.volume * clip.volume));
-          audio.playbackRate = clip.playbackRate || 1;
-          audio.muted = clip.muted || track.muted;
-
-          if (isActive && !clip.muted && !track.muted) {
-            if (Math.abs(audio.currentTime - targetMediaTime) > 0.25) {
-              audio.currentTime = Math.max(0, targetMediaTime);
-            }
-            if (isPlaying) {
-              if (audio.paused) {
-                const playPromise = audio.play();
-                if (playPromise !== undefined) {
-                  playPromise.catch((err) => {
-                    // Browser autoplay or waiting for user gesture
-                    console.debug('Audio play deferred:', err);
-                  });
-                }
-              }
-            } else {
-              if (!audio.paused) audio.pause();
-            }
-          } else {
-            if (!audio.paused) audio.pause();
+          if (clip.src) {
+            audioClipsToSync.push({
+              id: clip.id,
+              src: clip.src,
+              startMs: clip.startMs,
+              durationMs: clip.durationMs,
+              sourceStartMs: clip.sourceStartMs,
+              volume: clip.volume,
+              muted: clip.muted,
+              playbackRate: clip.playbackRate || 1,
+              trackVolume: track.volume,
+              trackMuted: track.muted,
+            });
           }
         }
       });
     });
+
+    // Synchronize all audio tracks through audioManager
+    audioManager.sync(audioClipsToSync, playheadMs, isPlaying);
   }
 
   public pauseAllAudio() {
-    this.audioPool.forEach((audio) => {
-      if (!audio.paused) audio.pause();
+    audioManager.pauseAll();
+    this.mediaPool.forEach((media) => {
+      if (media instanceof HTMLVideoElement && !media.paused) {
+        media.pause();
+      }
     });
   }
 

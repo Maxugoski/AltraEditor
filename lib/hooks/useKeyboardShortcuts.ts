@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { useEditorStore } from '@/store/useEditorStore';
+import { audioManager } from '@/lib/audio/audioManager';
 
 export function useKeyboardShortcuts() {
   const {
@@ -127,6 +128,7 @@ export function useKeyboardShortcuts() {
       // --- 12. Play / Pause (Space) ---
       if (e.code === 'Space') {
         e.preventDefault();
+        audioManager.unlock();
         togglePlay();
         return;
       }
