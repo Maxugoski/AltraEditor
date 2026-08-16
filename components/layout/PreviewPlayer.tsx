@@ -165,32 +165,7 @@ export const PreviewPlayer: React.FC = () => {
     setDragStartPos(null);
   };
 
-  // Keyboard hotkeys
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
 
-      if (e.code === 'Space') {
-        e.preventDefault();
-        togglePlay();
-      } else if (e.code === 'ArrowLeft') {
-        e.preventDefault();
-        setPlayhead(Math.max(0, playheadMs - (e.shiftKey ? 1000 : 1000 / fps)));
-      } else if (e.code === 'ArrowRight') {
-        e.preventDefault();
-        setPlayhead(Math.min(durationMs, playheadMs + (e.shiftKey ? 1000 : 1000 / fps)));
-      } else if (e.code === 'Home') {
-        e.preventDefault();
-        setPlayhead(0);
-      } else if (e.code === 'End') {
-        e.preventDefault();
-        setPlayhead(durationMs);
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [togglePlay, setPlayhead, playheadMs, durationMs, fps]);
 
   const toggleFullscreen = () => {
     if (containerRef.current) {

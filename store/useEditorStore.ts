@@ -88,6 +88,7 @@ interface EditorStore extends ProjectState {
   selectTrack: (trackId: string | null) => void;
 
   // Clips Management
+  clipboardClip: Clip | null;
   addClip: (trackId: string, clipData: Partial<Clip>, atMs?: number) => Clip;
   removeClip: (clipId: string) => void;
   updateClip: (clipId: string, updates: Partial<Clip>) => void;
@@ -96,6 +97,8 @@ interface EditorStore extends ProjectState {
   moveClip: (clipId: string, targetTrackId: string, newStartMs: number) => void;
   splitClipAtPlayhead: (clipId?: string) => void;
   duplicateClip: (clipId: string) => void;
+  copyClip: (clipId?: string) => void;
+  pasteClip: (atMs?: number) => void;
 
   // Tracks Management
   addTrack: (type: TrackType, name?: string) => string;
@@ -210,6 +213,7 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
   exportStatusMessage: '',
   isTranscribing: false,
   transcriptionProgress: 0,
+  clipboardClip: null,
   mediaAssets: [],
   history: [{ tracks: INITIAL_TRACKS, durationMs: 15000 }],
   historyIndex: 0,
@@ -529,6 +533,55 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
       set({ tracks: newTracks, durationMs: newDuration, selectedClipId: (newClip as Clip).id });
       saveHistory();
     }
+  },
+
+  copyClip: (clipId) => {
+    const { tracks, selectedClipId } = get();
+    const targetId = clipId || selectedClipId;
+    if (!targetId) return;
+
+    const clip = tracks.flatMap((t) => t.clips).find((c) => c.id === targetId);
+    if (clip) {
+      set({ clipboardClip: JSON.parse(JSON.stringify(clip)) });
+    }
+  },
+
+  pasteClip: (atMs) => {
+    const { clipboardClip, playheadMs, tracks, saveHistory } = get();
+    if (!clipboardClip) return;
+
+    const targetStartMs = atMs !== undefined ? atMs : playheadMs;
+    // Find track of matching type, or original track, or first track
+    let targetTrack = tracks.find((t) => t.id === clipboardClip.trackId);
+    if (!targetTrack) {
+      targetTrack = tracks.find((t) => t.type === clipboardClip.type) || tracks[0];
+    }
+    if (!targetTrack) return;
+
+    const newClip: Clip = {
+      ...JSON.parse(JSON.stringify(clipboardClip)),
+      id: `clip_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      trackId: targetTrack.id,
+      startMs: Math.max(0, targetStartMs),
+    };
+
+    const newTracks = tracks.map((t) => {
+      if (t.id === targetTrack!.id) {
+        return {
+          ...t,
+          clips: [...t.clips, newClip],
+        };
+      }
+      return t;
+    });
+
+    const newDuration = calculateProjectDuration(newTracks);
+    set({
+      tracks: newTracks,
+      durationMs: newDuration,
+      selectedClipId: newClip.id,
+    });
+    saveHistory();
   },
 
   addTrack: (type, name) => {
