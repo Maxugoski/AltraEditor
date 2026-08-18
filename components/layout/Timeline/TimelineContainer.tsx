@@ -4,7 +4,7 @@ import React, { useRef, useState, useEffect } from 'react';
 import { useEditorStore } from '@/store/useEditorStore';
 import { TrackList } from './TrackList';
 import { TrackItem } from './TrackItem';
-import { msToPx, pxToMs, formatTimecode } from '@/lib/utils/time';
+import { msToPx, pxToMs, formatTimecode, snapTime } from '@/lib/utils/time';
 import {
   Scissors,
   Copy,
@@ -49,7 +49,21 @@ export const TimelineContainer: React.FC = () => {
     const rect = scrollContainerRef.current.getBoundingClientRect();
     const scrollLeft = scrollContainerRef.current.scrollLeft;
     const clickX = e.clientX - rect.left + scrollLeft;
-    const targetMs = pxToMs(clickX, zoom);
+    let targetMs = pxToMs(clickX, zoom);
+
+    if (isSnapping) {
+      const snapPoints = [0, durationMs];
+      tracks.forEach((t) => {
+        t.clips.forEach((c) => {
+          snapPoints.push(c.startMs);
+          snapPoints.push(c.startMs + c.durationMs);
+        });
+      });
+      const snapThresholdMs = pxToMs(12, zoom); // 12px snap radius
+      const { snappedTime } = snapTime(targetMs, snapPoints, snapThresholdMs);
+      targetMs = snappedTime;
+    }
+
     setPlayhead(Math.max(0, Math.min(targetMs, durationMs)));
   };
 
@@ -209,15 +223,51 @@ export const TimelineContainer: React.FC = () => {
               })}
             </div>
 
-            {/* PLAYHEAD NEEDLE & VERTICAL LINE */}
+            {/* PLAYHEAD NEEDLE & INTERACTIVE MARKER */}
             <div
               style={{ left: `${playheadLeftPx}px` }}
-              className="absolute top-0 bottom-0 w-px bg-red-500 z-30 pointer-events-none"
+              className="absolute top-0 bottom-0 z-30 pointer-events-none -translate-x-1/2"
             >
-              {/* Playhead Top Pin */}
-              <div className="w-3.5 h-3.5 bg-red-500 rounded-sm rotate-45 -translate-x-1/2 -translate-y-1 shadow-lg shadow-red-500/50 flex items-center justify-center pointer-events-auto cursor-ew-resize" />
-              {/* Glowing Line */}
-              <div className="w-0.5 h-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)] -translate-x-1/2" />
+              {/* Playhead Top Pin & Grab Handle */}
+              <div
+                onMouseDown={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  setIsScrubbing(true);
+                  updatePlayheadFromEvent(e);
+                }}
+                className="w-8 h-8 pointer-events-auto cursor-ew-resize flex flex-col items-center group relative -top-0 hover:scale-110 active:scale-95 transition-transform"
+                title={`Playhead: ${formatTimecode(playheadMs, fps)} (Click & drag anywhere to scrub)`}
+              >
+                {/* Modern CapCut-style Red Marker Badge */}
+                <div className="w-5 h-4 bg-red-500 group-hover:bg-red-400 rounded-t-sm shadow-lg shadow-red-500/50 flex items-center justify-center transition-colors">
+                  <div className="w-1.5 h-1.5 bg-white rounded-full shadow" />
+                </div>
+                {/* Downward pointing triangle pointer */}
+                <div className="w-0 h-0 border-l-[10px] border-l-transparent border-r-[10px] border-r-transparent border-t-[8px] border-t-red-500 group-hover:border-t-red-400 transition-colors" />
+
+                {/* Floating Timecode Badge while scrubbing or hovering */}
+                <div
+                  className={`absolute -top-7 px-2 py-0.5 rounded bg-red-600 text-white font-mono text-[10px] font-bold shadow-xl border border-red-400/30 whitespace-nowrap transition-opacity ${
+                    isScrubbing ? 'opacity-100 scale-100' : 'opacity-0 group-hover:opacity-100 scale-95 pointer-events-none'
+                  }`}
+                >
+                  {formatTimecode(playheadMs, fps)}
+                </div>
+              </div>
+
+              {/* Full-Height Vertical Guide Line with generous draggable hit area */}
+              <div
+                onMouseDown={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  setIsScrubbing(true);
+                  updatePlayheadFromEvent(e);
+                }}
+                className="w-5 h-full pointer-events-auto cursor-ew-resize flex justify-center group/line -mt-1"
+              >
+                <div className="w-0.5 h-full bg-red-500 group-hover/line:w-1 group-hover/line:bg-red-400 shadow-[0_0_10px_rgba(239,68,68,0.9)] transition-all" />
+              </div>
             </div>
 
             {/* TRACK LANES */}
