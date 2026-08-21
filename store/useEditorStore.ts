@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { generateSynthwaveAudioWavUrl } from '@/lib/audio/synthAudio';
 import {
   ProjectState,
   Track,
@@ -823,5 +824,26 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
       history: [{ tracks: starterTracks, durationMs: dur }],
       historyIndex: 0,
     });
+
+    // Generate real audible synthwave audio track asynchronously
+    if (typeof window !== 'undefined') {
+      generateSynthwaveAudioWavUrl(14).then((wavUrl) => {
+        if (wavUrl) {
+          const currentTracks = get().tracks;
+          const updatedTracks = currentTracks.map((t) => {
+            if (t.id === 'track-audio-1') {
+              return {
+                ...t,
+                clips: t.clips.map((c) =>
+                  c.id === 'sample-aud-1' ? { ...c, src: wavUrl } : c
+                ),
+              };
+            }
+            return t;
+          });
+          set({ tracks: updatedTracks });
+        }
+      });
+    }
   },
 }));

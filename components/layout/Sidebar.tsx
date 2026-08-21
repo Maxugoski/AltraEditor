@@ -3,6 +3,7 @@
 import React, { useState, useRef } from 'react';
 import { useEditorStore } from '@/store/useEditorStore';
 import { inspectMediaFile, createSyntheticVideoAsset } from '@/lib/utils/media';
+import { generateSynthwaveAudioWavUrl } from '@/lib/audio/synthAudio';
 import { MediaAsset, TextStyle, FilterSettings } from '@/types/editor';
 import {
   FolderOpen,
@@ -504,14 +505,15 @@ export const Sidebar: React.FC = () => {
                     </div>
                   </div>
                   <button
-                    onClick={() => {
+                    onClick={async () => {
                       let audioTrack = tracks.find((t) => t.type === 'audio');
                       if (!audioTrack) audioTrack = tracks[0];
+                      const realAudioUrl = await generateSynthwaveAudioWavUrl(15);
                       addClip(audioTrack.id, {
                         name: item.title,
                         type: 'audio',
-                        src: 'synth-audio-1',
-                        durationMs: 12000,
+                        src: realAudioUrl,
+                        durationMs: 14000,
                         waveform: [0.3, 0.6, 0.8, 0.4, 0.7, 0.9, 0.5, 0.8, 0.3, 0.6],
                       });
                     }}

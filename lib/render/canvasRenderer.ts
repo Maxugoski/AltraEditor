@@ -70,41 +70,54 @@ export class CanvasRenderer {
         if (clip.type === 'video') {
           const video = this.getMediaElement(clip.src, 'video') as HTMLVideoElement | null;
           if (video) {
-            video.playbackRate = clip.playbackRate;
-            video.volume = track.volume * clip.volume;
+            video.playbackRate = clip.playbackRate || 1;
+            video.volume = Math.min(1, Math.max(0, track.volume * clip.volume));
             video.muted = clip.muted || track.muted;
 
             if (isActive) {
-              if (Math.abs(video.currentTime - targetMediaTime) > 0.15) {
+              if (Math.abs(video.currentTime - targetMediaTime) > 0.25) {
                 video.currentTime = Math.max(0, targetMediaTime);
               }
-              if (isPlaying && video.paused) {
-                video.play().catch(() => {});
-              } else if (!isPlaying && !video.paused) {
-                video.pause();
+              if (isPlaying) {
+                if (video.paused) {
+                  video.play().catch(() => {});
+                }
+              } else {
+                if (!video.paused) video.pause();
               }
             } else {
               if (!video.paused) video.pause();
             }
           }
         } else if (clip.type === 'audio') {
-          if (!clip.src || clip.src.startsWith('synth-')) return;
+          if (!clip.src) return;
           let audio = this.audioPool.get(clip.id);
           if (!audio) {
             audio = new Audio(clip.src);
+            audio.crossOrigin = 'anonymous';
+            audio.preload = 'auto';
             this.audioPool.set(clip.id, audio);
           }
           audio.volume = Math.min(1, Math.max(0, track.volume * clip.volume));
-          audio.playbackRate = clip.playbackRate;
+          audio.playbackRate = clip.playbackRate || 1;
+          audio.muted = clip.muted || track.muted;
 
           if (isActive && !clip.muted && !track.muted) {
-            if (Math.abs(audio.currentTime - targetMediaTime) > 0.15) {
+            if (Math.abs(audio.currentTime - targetMediaTime) > 0.25) {
               audio.currentTime = Math.max(0, targetMediaTime);
             }
-            if (isPlaying && audio.paused) {
-              audio.play().catch(() => {});
-            } else if (!isPlaying && !audio.paused) {
-              audio.pause();
+            if (isPlaying) {
+              if (audio.paused) {
+                const playPromise = audio.play();
+                if (playPromise !== undefined) {
+                  playPromise.catch((err) => {
+                    // Browser autoplay or waiting for user gesture
+                    console.debug('Audio play deferred:', err);
+                  });
+                }
+              }
+            } else {
+              if (!audio.paused) audio.pause();
             }
           } else {
             if (!audio.paused) audio.pause();

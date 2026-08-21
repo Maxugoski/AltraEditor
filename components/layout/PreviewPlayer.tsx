@@ -64,39 +64,87 @@ export const PreviewPlayer: React.FC = () => {
     };
   }, []);
 
-  // Main Render & Playback Loop
+  const playheadRef = useRef<number>(playheadMs);
+  const isPlayingRef = useRef<boolean>(isPlaying);
+  const tracksRef = useRef(tracks);
+  const durationMsRef = useRef(durationMs);
+
   useEffect(() => {
+    tracksRef.current = tracks;
+  }, [tracks]);
+
+  useEffect(() => {
+    durationMsRef.current = durationMs;
+  }, [durationMs]);
+
+  useEffect(() => {
+    isPlayingRef.current = isPlaying;
+    if (isPlaying) {
+      lastTimeRef.current = performance.now();
+    } else {
+      if (rendererRef.current) {
+        rendererRef.current.pauseAllAudio();
+      }
+    }
+  }, [isPlaying]);
+
+  // Sync external seek/scrub updates to playheadRef
+  useEffect(() => {
+    playheadRef.current = playheadMs;
+    if (!isPlayingRef.current && rendererRef.current && canvasRef.current) {
+      rendererRef.current.syncMediaPlayback(tracksRef.current, playheadMs, false);
+      rendererRef.current.render(tracksRef.current, playheadMs, canvasWidth, canvasHeight);
+    }
+  }, [playheadMs, canvasWidth, canvasHeight]);
+
+  // Main High-Performance Render & Playback Loop
+  useEffect(() => {
+    let animId: number;
+    let lastStoreUpdateTime = 0;
+
     const loop = (currentTime: number) => {
       const delta = currentTime - lastTimeRef.current;
       lastTimeRef.current = currentTime;
 
-      if (isPlaying) {
-        const nextTime = playheadMs + delta;
-        if (nextTime >= durationMs) {
-          setPlayhead(durationMs);
+      if (isPlayingRef.current) {
+        let nextTime = playheadRef.current + delta;
+        if (nextTime >= durationMsRef.current) {
+          nextTime = durationMsRef.current;
           setIsPlaying(false);
-        } else {
+        }
+        playheadRef.current = nextTime;
+
+        // Throttle Zustand store sync to ~30 FPS to prevent React render queue saturation
+        if (currentTime - lastStoreUpdateTime > 32) {
           setPlayhead(nextTime);
+          lastStoreUpdateTime = currentTime;
         }
       }
 
       if (rendererRef.current && canvasRef.current) {
-        rendererRef.current.syncMediaPlayback(tracks, playheadMs, isPlaying);
-        rendererRef.current.render(tracks, playheadMs, canvasWidth, canvasHeight);
+        rendererRef.current.syncMediaPlayback(
+          tracksRef.current,
+          playheadRef.current,
+          isPlayingRef.current
+        );
+        rendererRef.current.render(
+          tracksRef.current,
+          playheadRef.current,
+          canvasWidth,
+          canvasHeight
+        );
       }
 
-      animationFrameRef.current = requestAnimationFrame(loop);
+      animId = requestAnimationFrame(loop);
     };
 
     lastTimeRef.current = performance.now();
-    animationFrameRef.current = requestAnimationFrame(loop);
+    animId = requestAnimationFrame(loop);
 
     return () => {
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-      }
+      cancelAnimationFrame(animId);
     };
-  }, [isPlaying, playheadMs, tracks, durationMs, canvasWidth, canvasHeight, setPlayhead, setIsPlaying]);
+  }, [canvasWidth, canvasHeight, setIsPlaying, setPlayhead]);
 
   // Handle Dragging clip on Canvas
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
