@@ -90,7 +90,7 @@ self.onmessage = async (e: MessageEvent) => {
         }
 
         const data = (await ff.readFile(outputFileName)) as Uint8Array;
-        const blob = new Blob([data.buffer], { type: format === 'mp4' ? 'video/mp4' : 'video/webm' });
+        const blob = new Blob([data.buffer as ArrayBuffer], { type: format === 'mp4' ? 'video/mp4' : 'video/webm' });
 
         // Clean virtual FS
         for (let i = 0; i < frames.length; i++) {
