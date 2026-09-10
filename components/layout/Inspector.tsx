@@ -19,7 +19,10 @@ import {
   Palette,
   Check,
   RefreshCcw,
+  Play,
+  Flame,
 } from 'lucide-react';
+import { TEMPLATE_LIST } from '@/lib/caption/captionTemplates';
 
 export const Inspector: React.FC = () => {
   const {
@@ -32,6 +35,11 @@ export const Inspector: React.FC = () => {
     removeClip,
     duplicateClip,
     updateSubtitleCue,
+    updateSubtitleWord,
+    deleteSubtitleCue,
+    applyCaptionTemplate,
+    playheadMs,
+    setPlayhead,
   } = useEditorStore();
 
   const selectedClip = tracks
@@ -140,24 +148,165 @@ export const Inspector: React.FC = () => {
               </div>
             </div>
 
-            {/* Subtitle cues editor if present */}
+            {/* CapCut Subtitle & Caption Tools */}
             {selectedClip.subtitleCues && selectedClip.subtitleCues.length > 0 && (
-              <div className="space-y-2 mt-2 pt-2 border-t border-editor-border">
-                <span className="text-[11px] font-semibold text-purple-300">Subtitle Cues ({selectedClip.subtitleCues.length})</span>
-                <div className="space-y-1.5 max-h-40 overflow-y-auto custom-scrollbar">
-                  {selectedClip.subtitleCues.map((cue) => (
-                    <div key={cue.id} className="p-1.5 rounded bg-editor-surface2 text-[11px] space-y-1">
-                      <div className="text-[9px] text-slate-400 font-mono">
-                        {formatTimecode(cue.startMs)} - {formatTimecode(cue.endMs)}
-                      </div>
+              <div className="space-y-3 mt-3 pt-3 border-t border-editor-border">
+                {/* Template Selector */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-amber-300 flex items-center gap-1">
+                      <Flame className="w-3.5 h-3.5 text-amber-400" /> CapCut Style
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-mono">
+                      {textStyle?.captionTemplate || 'karaoke'}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-4 gap-1">
+                    {TEMPLATE_LIST.map((tpl) => {
+                      const isActive = (textStyle?.captionTemplate || 'karaoke') === tpl.id;
+                      return (
+                        <button
+                          key={tpl.id}
+                          type="button"
+                          onClick={() => applyCaptionTemplate(selectedClip.id, tpl.id)}
+                          className={`py-1 px-1 rounded text-[9px] font-bold truncate transition border ${
+                            isActive
+                              ? 'bg-amber-500/25 border-amber-400 text-amber-300 shadow-sm'
+                              : 'bg-editor-surface2 border-editor-border text-slate-400 hover:text-slate-200'
+                          }`}
+                          title={tpl.name}
+                        >
+                          {tpl.name.split(' ')[0]}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Highlight & Stroke Adjusters */}
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  <div className="space-y-1">
+                    <label className="text-[10px] text-slate-400">Active Word Color</label>
+                    <div className="flex items-center gap-1.5 p-1 bg-editor-surface2 rounded border border-editor-border">
                       <input
-                        type="text"
-                        value={cue.text}
-                        onChange={(e) => updateSubtitleCue(selectedClip.id, cue.id, e.target.value)}
-                        className="w-full bg-editor-bg px-1.5 py-0.5 rounded text-white text-[11px] outline-none"
+                        type="color"
+                        value={textStyle?.activeWordColor || '#FFE500'}
+                        onChange={(e) =>
+                          updateClip(selectedClip.id, {
+                            textStyle: { ...textStyle!, activeWordColor: e.target.value },
+                          })
+                        }
+                        className="w-5 h-5 rounded border-0 cursor-pointer bg-transparent"
                       />
+                      <span className="text-[10px] font-mono text-slate-300 truncate">
+                        {textStyle?.activeWordColor || '#FFE500'}
+                      </span>
                     </div>
-                  ))}
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] text-slate-400">Outline Width</label>
+                    <input
+                      type="range"
+                      min="0"
+                      max="10"
+                      value={textStyle?.outlineWidth ?? 4}
+                      onChange={(e) =>
+                        updateClip(selectedClip.id, {
+                          textStyle: { ...textStyle!, outlineWidth: Number(e.target.value) },
+                        })
+                      }
+                      className="w-full accent-amber-400 mt-1.5"
+                    />
+                  </div>
+                </div>
+
+                {/* Interactive Word-Level Cues List */}
+                <div className="space-y-2 pt-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-semibold text-slate-300">
+                      Word Timing Cues ({selectedClip.subtitleCues.length})
+                    </span>
+                    <span className="text-[9px] text-slate-500">Click word to seek</span>
+                  </div>
+
+                  <div className="space-y-2 max-h-56 overflow-y-auto custom-scrollbar pr-0.5">
+                    {selectedClip.subtitleCues.map((cue) => {
+                      const clipLocalPlayhead = playheadMs - selectedClip.startMs;
+                      const isCueActive =
+                        clipLocalPlayhead >= cue.startMs && clipLocalPlayhead <= cue.endMs;
+
+                      return (
+                        <div
+                          key={cue.id}
+                          className={`p-2 rounded-lg border text-[11px] space-y-1.5 transition ${
+                            isCueActive
+                              ? 'bg-amber-950/40 border-amber-500/50'
+                              : 'bg-editor-surface2 border-editor-border'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <button
+                              type="button"
+                              onClick={() => setPlayhead(selectedClip.startMs + cue.startMs)}
+                              className="text-[9px] font-mono text-amber-300/80 hover:text-amber-200 flex items-center gap-1"
+                              title="Seek playhead to cue start"
+                            >
+                              <Play className="w-2.5 h-2.5 fill-current" />
+                              <span>
+                                {formatTimecode(cue.startMs)} - {formatTimecode(cue.endMs)}
+                              </span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => deleteSubtitleCue(selectedClip.id, cue.id)}
+                              className="text-slate-500 hover:text-rose-400 transition"
+                              title="Delete cue"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </div>
+
+                          <input
+                            type="text"
+                            value={cue.text}
+                            onChange={(e) =>
+                              updateSubtitleCue(selectedClip.id, cue.id, e.target.value)
+                            }
+                            className="w-full bg-editor-bg border border-editor-border px-2 py-1 rounded text-white text-[11px] outline-none focus:border-amber-400"
+                          />
+
+                          {/* Word Timing Chips */}
+                          {cue.words && cue.words.length > 0 && (
+                            <div className="flex flex-wrap gap-1 pt-0.5">
+                              {cue.words.map((w) => {
+                                const isWordActive =
+                                  clipLocalPlayhead >= w.startMs && clipLocalPlayhead <= w.endMs;
+                                return (
+                                  <button
+                                    key={w.id}
+                                    type="button"
+                                    onClick={() =>
+                                      setPlayhead(selectedClip.startMs + w.startMs)
+                                    }
+                                    className={`px-1.5 py-0.5 rounded text-[10px] font-semibold border transition flex items-center gap-1 ${
+                                      isWordActive
+                                        ? 'bg-amber-400 text-slate-950 border-amber-300 shadow-md font-bold scale-105'
+                                        : 'bg-editor-bg/80 border-slate-700 text-slate-300 hover:border-amber-400/50 hover:text-white'
+                                    }`}
+                                    title={`Seek to ${w.text} (${formatTimecode(w.startMs)})`}
+                                  >
+                                    <span>{w.text}</span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
             )}

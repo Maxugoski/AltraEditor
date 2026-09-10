@@ -1,6 +1,7 @@
 import { Clip, Track, SubtitleCue, Transform, TextStyle } from '@/types/editor';
 import { applyChromaKeyToImageData } from '@/lib/ai/chromaKey';
 import { audioManager } from '@/lib/audio/audioManager';
+import { alignWordsInPhrase } from '@/lib/caption/wordAligner';
 
 interface RenderContext {
   canvas: HTMLCanvasElement;
@@ -418,6 +419,12 @@ export class CanvasRenderer {
   }
 
   private drawTextClip(clip: Clip, width: number, height: number, localTimeMs: number) {
+    // If this clip has subtitle cues, delegate to CapCut precision word-level renderer
+    if (clip.subtitleCues && clip.subtitleCues.length > 0) {
+      this.drawCapCutSubtitleClip(clip, width, height, localTimeMs);
+      return;
+    }
+
     const ctx = this.ctx;
     const style: TextStyle = clip.textStyle || {
       fontFamily: 'Inter, sans-serif',
@@ -429,18 +436,7 @@ export class CanvasRenderer {
       outlineWidth: 3,
     };
 
-    let textToDisplay = clip.textContent || '';
-
-    // Check subtitle cues if present
-    if (clip.subtitleCues && clip.subtitleCues.length > 0) {
-      const cue = clip.subtitleCues.find(
-        (c) => localTimeMs >= c.startMs && localTimeMs <= c.endMs
-      );
-      if (cue) {
-        textToDisplay = cue.text;
-      }
-    }
-
+    const textToDisplay = clip.textContent || '';
     if (!textToDisplay) return;
 
     ctx.font = `${style.fontWeight} ${style.fontSize}px ${style.fontFamily}`;
@@ -495,6 +491,220 @@ export class CanvasRenderer {
       ctx.shadowColor = 'transparent';
       ctx.shadowBlur = 0;
     });
+  }
+
+  /**
+   * CapCut Signature Word-Level Precision Subtitle Renderer
+   * Renders active word highlights, karaoke spring bounce, neon glows, boxed badges, and cinematic pills
+   */
+  private drawCapCutSubtitleClip(clip: Clip, width: number, height: number, localTimeMs: number) {
+    if (!clip.subtitleCues || clip.subtitleCues.length === 0) return;
+
+    const cue = clip.subtitleCues.find(
+      (c) => localTimeMs >= c.startMs && localTimeMs <= c.endMs
+    );
+    if (!cue) return;
+
+    const ctx = this.ctx;
+    const style: TextStyle = clip.textStyle || {
+      fontFamily: 'Inter, sans-serif',
+      fontSize: 46,
+      fontWeight: '800',
+      color: '#FFFFFF',
+      textAlign: 'center',
+    };
+
+    const template = style.captionTemplate || 'karaoke';
+    const fontSize = style.fontSize || 46;
+    const fontFamily = style.fontFamily || 'Inter, sans-serif';
+    const fontWeight = style.fontWeight || '800';
+
+    ctx.font = `${fontWeight} ${fontSize}px ${fontFamily}`;
+    ctx.textBaseline = 'middle';
+
+    // Ensure words exist
+    const words =
+      cue.words && cue.words.length > 0
+        ? cue.words
+        : alignWordsInPhrase(cue.text, cue.startMs, cue.endMs);
+
+    if (words.length === 0) return;
+
+    // Find active word
+    let activeIndex = words.findIndex(
+      (w) => localTimeMs >= w.startMs && localTimeMs <= w.endMs
+    );
+
+    if (activeIndex === -1) {
+      if (localTimeMs < words[0].startMs) {
+        activeIndex = -1;
+      } else {
+        for (let i = words.length - 1; i >= 0; i--) {
+          if (localTimeMs >= words[i].startMs) {
+            activeIndex = i;
+            break;
+          }
+        }
+      }
+    }
+
+    // TikTok Single Word Center Pop
+    if (template === 'tiktok-single') {
+      const displayWord = activeIndex >= 0 ? words[activeIndex] : words[0];
+      const wordProgress =
+        (localTimeMs - displayWord.startMs) /
+        Math.max(1, displayWord.endMs - displayWord.startMs);
+
+      let scale = style.activeWordScale || 1.25;
+      if (style.animationBounce && wordProgress >= 0 && wordProgress <= 1) {
+        scale *= wordProgress < 0.3 ? 1.0 + 0.2 * Math.sin((wordProgress / 0.3) * Math.PI) : 1.0;
+      }
+
+      ctx.save();
+      ctx.textAlign = 'center';
+      ctx.scale(scale, scale);
+
+      if (style.shadowColor) {
+        ctx.shadowColor = style.shadowColor;
+        ctx.shadowBlur = style.shadowBlur || 16;
+      }
+
+      if (style.outlineColor && style.outlineWidth) {
+        ctx.strokeStyle = style.outlineColor;
+        ctx.lineWidth = style.outlineWidth;
+        ctx.lineJoin = 'round';
+        ctx.strokeText(displayWord.text, 0, 0);
+      }
+
+      ctx.fillStyle = style.activeWordColor || '#22C55E';
+      ctx.fillText(displayWord.text, 0, 0);
+      ctx.restore();
+      return;
+    }
+
+    // Typewriter: only words up to activeIndex
+    const visibleWords =
+      template === 'typewriter'
+        ? words.slice(0, Math.max(1, activeIndex + 1))
+        : words;
+
+    // Measure each word and space
+    const spaceWidth = ctx.measureText(' ').width;
+    const wordMetrics = visibleWords.map((w) => ({
+      word: w,
+      width: ctx.measureText(w.text).width,
+    }));
+
+    const totalPhraseWidth =
+      wordMetrics.reduce((acc, m) => acc + m.width, 0) +
+      Math.max(0, wordMetrics.length - 1) * spaceWidth;
+
+    const lineHeight = fontSize * 1.3;
+
+    // Draw frosted pill backdrop (e.g. for cinematic, boxed, typewriter)
+    if (style.backgroundColor) {
+      const padX = style.boxPadding || 18;
+      const padY = Math.round(padX * 0.55);
+      const radius = style.borderRadius || 12;
+
+      ctx.fillStyle = style.backgroundColor;
+      ctx.beginPath();
+      ctx.roundRect(
+        -totalPhraseWidth / 2 - padX,
+        -lineHeight / 2 - padY,
+        totalPhraseWidth + padX * 2,
+        lineHeight + padY * 2,
+        radius
+      );
+      ctx.fill();
+    }
+
+    let currentX = -totalPhraseWidth / 2;
+
+    wordMetrics.forEach(({ word, width: wordWidth }, i) => {
+      const isActive = i === activeIndex;
+      const wordCenterX = currentX + wordWidth / 2;
+
+      ctx.save();
+
+      if (isActive) {
+        const wordDuration = Math.max(1, word.endMs - word.startMs);
+        const wordProgress = Math.max(0, Math.min(1, (localTimeMs - word.startMs) / wordDuration));
+
+        let scale = style.activeWordScale || 1.15;
+        if (style.animationBounce && wordProgress < 0.35) {
+          scale *= 1.0 + 0.18 * Math.sin((wordProgress / 0.35) * Math.PI);
+        }
+
+        // Draw individual active badge box (e.g. 'boxed' template)
+        if (style.activeWordBg) {
+          const badgePadX = 8;
+          const badgePadY = 4;
+          ctx.fillStyle = style.activeWordBg;
+          ctx.beginPath();
+          ctx.roundRect(
+            currentX - badgePadX,
+            -lineHeight / 2 - badgePadY,
+            wordWidth + badgePadX * 2,
+            lineHeight + badgePadY * 2,
+            6
+          );
+          ctx.fill();
+        }
+
+        // Apply scale around word center
+        ctx.translate(wordCenterX, 0);
+        ctx.scale(scale, scale);
+        ctx.translate(-wordCenterX, 0);
+
+        // Active drop shadow / glow
+        if (style.shadowColor) {
+          ctx.shadowColor = style.shadowColor;
+          ctx.shadowBlur = style.shadowBlur || 14;
+        }
+
+        // Active stroke
+        if (style.outlineColor && style.outlineWidth) {
+          ctx.strokeStyle = style.outlineColor;
+          ctx.lineWidth = style.outlineWidth;
+          ctx.lineJoin = 'round';
+          ctx.strokeText(word.text, currentX, 0);
+        }
+
+        // Active fill
+        ctx.fillStyle = style.activeWordColor || '#FFE500';
+        ctx.fillText(word.text, currentX, 0);
+      } else {
+        // Inactive word
+        if (style.inactiveOpacity !== undefined && style.inactiveOpacity < 1) {
+          ctx.globalAlpha *= style.inactiveOpacity;
+        }
+
+        if (style.shadowColor) {
+          ctx.shadowColor = style.shadowColor;
+          ctx.shadowBlur = Math.round((style.shadowBlur || 8) * 0.6);
+        }
+
+        if (style.outlineColor && style.outlineWidth) {
+          ctx.strokeStyle = style.outlineColor;
+          ctx.lineWidth = Math.max(1, (style.outlineWidth || 3) * 0.85);
+          ctx.lineJoin = 'round';
+          ctx.strokeText(word.text, currentX, 0);
+        }
+
+        ctx.fillStyle = style.inactiveColor || style.color || '#FFFFFF';
+        ctx.fillText(word.text, currentX, 0);
+      }
+
+      ctx.restore();
+      currentX += wordWidth + spaceWidth;
+    });
+
+    // Typewriter blinking cursor
+    if (template === 'typewriter' && Math.floor(localTimeMs / 500) % 2 === 0) {
+      ctx.fillStyle = style.activeWordColor || '#22D3EE';
+      ctx.fillRect(currentX - spaceWidth + 4, -fontSize / 2, 3, fontSize);
+    }
   }
 
   public destroy() {

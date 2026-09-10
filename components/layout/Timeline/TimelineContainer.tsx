@@ -16,6 +16,10 @@ import {
   ZoomOut,
   Maximize2,
   Layers,
+  Clock,
+  SquareDashed,
+  X,
+  Play,
 } from 'lucide-react';
 
 export const TimelineContainer: React.FC = () => {
@@ -40,10 +44,22 @@ export const TimelineContainer: React.FC = () => {
   const [isScrubbing, setIsScrubbing] = useState(false);
   const [isSnapping, setIsSnapping] = useState(true);
 
+  // Timeline Cursor Highlighting & Range Selection State
+  const [hoverMs, setHoverMs] = useState<number | null>(null);
+  const [hoverX, setHoverX] = useState<number | null>(null);
+  const [rangeMode, setRangeMode] = useState<boolean>(false);
+  const [highlightRange, setHighlightRange] = useState<{ startMs: number; endMs: number } | null>(null);
+  const [isSelectingRange, setIsSelectingRange] = useState(false);
+  const rangeAnchorMs = useRef<number | null>(null);
+
   const timelineWidthPx = Math.max(1200, msToPx(durationMs, zoom) + 400);
 
   // Playhead scrubbing interaction on Ruler / Canvas
   const handleRulerMouseDown = (e: React.MouseEvent) => {
+    if (rangeMode || e.shiftKey) {
+      handleTimelineMouseDown(e);
+      return;
+    }
     setIsScrubbing(true);
     updatePlayheadFromEvent(e);
   };
@@ -71,26 +87,95 @@ export const TimelineContainer: React.FC = () => {
     setPlayhead(Math.max(0, Math.min(targetMs, durationMs)));
   };
 
+  const handleTimelineMouseMove = (e: React.MouseEvent) => {
+    if (!scrollContainerRef.current) return;
+    const rect = scrollContainerRef.current.getBoundingClientRect();
+    const scrollLeft = scrollContainerRef.current.scrollLeft;
+    const currentX = e.clientX - rect.left + scrollLeft;
+    const currentMs = Math.max(0, Math.min(pxToMs(currentX, zoom), durationMs));
+
+    setHoverX(currentX);
+    setHoverMs(currentMs);
+
+    if (isSelectingRange && rangeAnchorMs.current !== null) {
+      setHighlightRange({
+        startMs: Math.min(rangeAnchorMs.current, currentMs),
+        endMs: Math.max(rangeAnchorMs.current, currentMs),
+      });
+    }
+  };
+
+  const handleTimelineMouseLeave = () => {
+    if (!isSelectingRange) {
+      setHoverX(null);
+      setHoverMs(null);
+    }
+  };
+
+  const handleTimelineMouseDown = (e: React.MouseEvent) => {
+    if (rangeMode || e.shiftKey) {
+      if (!scrollContainerRef.current) return;
+      const rect = scrollContainerRef.current.getBoundingClientRect();
+      const scrollLeft = scrollContainerRef.current.scrollLeft;
+      const currentX = e.clientX - rect.left + scrollLeft;
+      const currentMs = Math.max(0, Math.min(pxToMs(currentX, zoom), durationMs));
+
+      rangeAnchorMs.current = currentMs;
+      setIsSelectingRange(true);
+      setHighlightRange({ startMs: currentMs, endMs: currentMs });
+    }
+  };
+
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
-      if (!isScrubbing) return;
-      updatePlayheadFromEvent(e);
+      if (isScrubbing) {
+        updatePlayheadFromEvent(e);
+      }
+      if (isSelectingRange && scrollContainerRef.current && rangeAnchorMs.current !== null) {
+        const rect = scrollContainerRef.current.getBoundingClientRect();
+        const scrollLeft = scrollContainerRef.current.scrollLeft;
+        const currentX = e.clientX - rect.left + scrollLeft;
+        const currentMs = Math.max(0, Math.min(pxToMs(currentX, zoom), durationMs));
+        setHighlightRange({
+          startMs: Math.min(rangeAnchorMs.current, currentMs),
+          endMs: Math.max(rangeAnchorMs.current, currentMs),
+        });
+      }
     };
 
     const handleMouseUp = () => {
-      setIsScrubbing(false);
+      if (isScrubbing) setIsScrubbing(false);
+      if (isSelectingRange) {
+        setIsSelectingRange(false);
+        rangeAnchorMs.current = null;
+      }
     };
 
-    if (isScrubbing) {
-      window.addEventListener('mousemove', handleMouseMove);
-      window.addEventListener('mouseup', handleMouseUp);
-    }
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
 
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isScrubbing, zoom, durationMs, setPlayhead]);
+  }, [isScrubbing, isSelectingRange, zoom, durationMs, setPlayhead]);
+
+  // Keyboard shortcut listener: 'R' toggles range selection mode, 'Escape' clears range
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) return;
+
+      if (e.key === 'r' || e.key === 'R') {
+        setRangeMode((prev) => !prev);
+      } else if (e.key === 'Escape') {
+        setHighlightRange(null);
+        setRangeMode(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   // Fallback Drag-and-Drop on timeline container if dropped outside specific track lane
   const handleContainerDragOver = (e: React.DragEvent) => {
@@ -246,6 +331,40 @@ export const TimelineContainer: React.FC = () => {
           >
             <Magnet className="w-3.5 h-3.5" />
           </button>
+
+          <button
+            type="button"
+            onClick={() => setRangeMode(!rangeMode)}
+            className={`p-1.5 rounded-md text-xs border transition flex items-center gap-1.5 ${
+              rangeMode
+                ? 'bg-amber-500/25 border-amber-400 text-amber-300 shadow-sm'
+                : 'bg-editor-surface2 border-editor-border text-slate-400 hover:text-slate-200'
+            }`}
+            title="Highlight Timeline Range (R) - Click & drag cursor on timeline"
+          >
+            <SquareDashed className="w-3.5 h-3.5 text-amber-400" />
+            <span className="text-[11px] font-medium hidden sm:inline">Highlight (R)</span>
+          </button>
+
+          {highlightRange && highlightRange.endMs > highlightRange.startMs && (
+            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-indigo-950/70 border border-indigo-500/40 text-indigo-200 text-[10px] font-mono">
+              <span className="text-indigo-400 font-bold">Range:</span>
+              <span>
+                {formatTimecode(highlightRange.startMs, fps)} → {formatTimecode(highlightRange.endMs, fps)}
+              </span>
+              <span className="px-1 py-0.2 rounded bg-indigo-500/30 text-white font-bold text-[9px]">
+                {((highlightRange.endMs - highlightRange.startMs) / 1000).toFixed(2)}s
+              </span>
+              <button
+                type="button"
+                onClick={() => setHighlightRange(null)}
+                className="p-0.5 hover:text-white transition"
+                title="Clear Highlight Range"
+              >
+                <X className="w-3 h-3 text-indigo-400 hover:text-white" />
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Right: Zoom Controls */}
@@ -294,12 +413,76 @@ export const TimelineContainer: React.FC = () => {
           ref={scrollContainerRef}
           onDragOver={handleContainerDragOver}
           onDrop={handleContainerDrop}
-          className="flex-1 overflow-x-auto overflow-y-auto relative custom-scrollbar bg-editor-timelineBg"
+          onMouseMove={handleTimelineMouseMove}
+          onMouseLeave={handleTimelineMouseLeave}
+          onMouseDown={handleTimelineMouseDown}
+          className={`flex-1 overflow-x-auto overflow-y-auto relative custom-scrollbar bg-editor-timelineBg ${
+            rangeMode ? 'cursor-crosshair' : ''
+          }`}
         >
           <div
             style={{ width: `${timelineWidthPx}px` }}
             className="relative flex flex-col min-h-full"
           >
+            {/* TIMELINE RANGE SELECTION HIGHLIGHT */}
+            {highlightRange && highlightRange.endMs > highlightRange.startMs && (
+              <div
+                style={{
+                  left: `${msToPx(highlightRange.startMs, zoom)}px`,
+                  width: `${Math.max(4, msToPx(highlightRange.endMs - highlightRange.startMs, zoom))}px`,
+                }}
+                className="absolute top-0 bottom-0 bg-indigo-500/15 border-l-2 border-r-2 border-indigo-400 shadow-[0_0_20px_rgba(99,102,241,0.25)] pointer-events-none z-20"
+              >
+                {/* Top In/Out Range Floating Info Tag */}
+                <div className="sticky top-0 z-30 flex justify-center -translate-y-7 pointer-events-auto">
+                  <div className="px-2 py-0.5 rounded-md bg-indigo-950/95 border border-indigo-400/60 shadow-xl text-indigo-200 text-[10px] font-mono flex items-center gap-1.5 whitespace-nowrap">
+                    <span className="text-indigo-400 font-bold">In: {formatTimecode(highlightRange.startMs, fps)}</span>
+                    <span>→</span>
+                    <span className="text-indigo-400 font-bold">Out: {formatTimecode(highlightRange.endMs, fps)}</span>
+                    <span className="px-1 py-0.2 rounded bg-indigo-500/30 text-white font-bold text-[9px]">
+                      {((highlightRange.endMs - highlightRange.startMs) / 1000).toFixed(2)}s
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setPlayhead(highlightRange.startMs)}
+                      className="p-0.5 hover:text-white transition"
+                      title="Play from In Point"
+                    >
+                      <Play className="w-2.5 h-2.5 fill-current text-indigo-300" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setHighlightRange(null)}
+                      className="p-0.5 hover:text-rose-400 transition"
+                      title="Clear Highlight Range"
+                    >
+                      <X className="w-3 h-3 text-slate-400" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* CURSOR HOVER HIGHLIGHT NEEDLE & TIMECODE TOOLTIP */}
+            {hoverX !== null && hoverMs !== null && !isScrubbing && (
+              <div
+                style={{ left: `${hoverX}px` }}
+                className="absolute top-0 bottom-0 z-25 pointer-events-none -translate-x-1/2"
+              >
+                {/* Floating Cursor Timecode Badge on Ruler */}
+                <div className="absolute top-0 flex flex-col items-center pointer-events-none">
+                  <div className="px-1.5 py-0.5 rounded bg-slate-900/95 text-cyan-300 font-mono text-[9px] font-bold border border-cyan-500/50 shadow-xl whitespace-nowrap flex items-center gap-1 -translate-y-7">
+                    <Clock className="w-2.5 h-2.5 text-cyan-400" />
+                    <span>{formatTimecode(hoverMs, fps)}</span>
+                  </div>
+                  <div className="w-2 h-2 bg-cyan-400 rotate-45 -translate-y-2 shadow-sm shadow-cyan-400/50" />
+                </div>
+
+                {/* Vertical Full-Height Luminous Cursor Guide Line */}
+                <div className="w-[1.5px] h-full bg-cyan-400/80 shadow-[0_0_8px_rgba(34,211,238,0.8)]" />
+              </div>
+            )}
+
             {/* TIME RULER */}
             <div
               ref={rulerRef}

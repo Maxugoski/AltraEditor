@@ -28,10 +28,20 @@ export interface FilterSettings {
   grayscale: number; // 0 - 100% (default 0)
 }
 
+export type CaptionTemplateId =
+  | 'karaoke'
+  | 'mrbeast'
+  | 'cinematic'
+  | 'neon'
+  | 'boxed'
+  | 'comic'
+  | 'typewriter'
+  | 'tiktok-single';
+
 export interface TextStyle {
   fontFamily: string;
   fontSize: number; // px
-  fontWeight: 'normal' | 'bold' | '600' | '800';
+  fontWeight: 'normal' | 'bold' | '600' | '800' | '900';
   color: string; // hex color
   backgroundColor?: string;
   outlineColor?: string;
@@ -41,6 +51,17 @@ export interface TextStyle {
   lineHeight?: number;
   shadowColor?: string;
   shadowBlur?: number;
+  
+  // CapCut Signature Caption Styling
+  captionTemplate?: CaptionTemplateId;
+  activeWordColor?: string;
+  activeWordBg?: string;
+  activeWordScale?: number;
+  inactiveColor?: string;
+  inactiveOpacity?: number;
+  boxPadding?: number;
+  borderRadius?: number;
+  animationBounce?: boolean;
 }
 
 export interface Transition {
@@ -54,11 +75,19 @@ export interface Keyframe {
   transform: Partial<Transform>;
 }
 
+export interface SubtitleWord {
+  id: string;
+  text: string;
+  startMs: number; // offset in ms relative to clip start
+  endMs: number;   // offset in ms relative to clip start
+}
+
 export interface SubtitleCue {
   id: string;
-  startMs: number;
-  endMs: number;
+  startMs: number; // offset in ms relative to clip start
+  endMs: number;   // offset in ms relative to clip start
   text: string;
+  words?: SubtitleWord[];
 }
 
 export interface Clip {

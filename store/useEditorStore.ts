@@ -13,7 +13,9 @@ import {
   SubtitleCue,
   MediaAsset,
   TextStyle,
+  CaptionTemplateId,
 } from '@/types/editor';
+import { getTemplateConfig } from '@/lib/caption/captionTemplates';
 
 const DEFAULT_TRANSFORM: Transform = {
   x: 0,
@@ -95,7 +97,6 @@ interface EditorStore extends ProjectState {
   updateClipTransform: (clipId: string, transform: Partial<Transform>) => void;
   updateClipTrim: (clipId: string, startMs: number, durationMs: number, sourceStartMs: number, saveUndo?: boolean) => void;
   moveClip: (clipId: string, targetTrackId: string, newStartMs: number, saveUndo?: boolean) => void;
-  saveHistory: () => void;
   splitClipAtPlayhead: (clipId?: string) => void;
   duplicateClip: (clipId: string) => void;
   copyClip: (clipId?: string) => void;
@@ -115,6 +116,9 @@ interface EditorStore extends ProjectState {
   setFilters: (clipId: string, filters: Partial<FilterSettings>) => void;
   addSubtitleCues: (clipId: string, cues: SubtitleCue[]) => void;
   updateSubtitleCue: (clipId: string, cueId: string, text: string) => void;
+  updateSubtitleWord: (clipId: string, cueId: string, wordId: string, newText: string) => void;
+  deleteSubtitleCue: (clipId: string, cueId: string) => void;
+  applyCaptionTemplate: (clipId: string, templateId: CaptionTemplateId) => void;
 
   // Export & Processing Status
   setExportState: (isExporting: boolean, progress?: number, message?: string) => void;
@@ -688,6 +692,76 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
             subtitleCues: c.subtitleCues.map((cue) =>
               cue.id === cueId ? { ...cue, text } : cue
             ),
+          };
+        }
+        return c;
+      }),
+    }));
+    set({ tracks: newTracks });
+    saveHistory();
+  },
+
+  updateSubtitleWord: (clipId, cueId, wordId, newText) => {
+    const { tracks, saveHistory } = get();
+    const newTracks = tracks.map((t) => ({
+      ...t,
+      clips: t.clips.map((c) => {
+        if (c.id === clipId && c.subtitleCues) {
+          return {
+            ...c,
+            subtitleCues: c.subtitleCues.map((cue) => {
+              if (cue.id === cueId && cue.words) {
+                const updatedWords = cue.words.map((w) =>
+                  w.id === wordId ? { ...w, text: newText } : w
+                );
+                return {
+                  ...cue,
+                  text: updatedWords.map((w) => w.text).join(' '),
+                  words: updatedWords,
+                };
+              }
+              return cue;
+            }),
+          };
+        }
+        return c;
+      }),
+    }));
+    set({ tracks: newTracks });
+    saveHistory();
+  },
+
+  deleteSubtitleCue: (clipId, cueId) => {
+    const { tracks, saveHistory } = get();
+    const newTracks = tracks.map((t) => ({
+      ...t,
+      clips: t.clips.map((c) => {
+        if (c.id === clipId && c.subtitleCues) {
+          return {
+            ...c,
+            subtitleCues: c.subtitleCues.filter((cue) => cue.id !== cueId),
+          };
+        }
+        return c;
+      }),
+    }));
+    set({ tracks: newTracks });
+    saveHistory();
+  },
+
+  applyCaptionTemplate: (clipId, templateId) => {
+    const { tracks, saveHistory } = get();
+    const templateConfig = getTemplateConfig(templateId);
+    const newTracks = tracks.map((t) => ({
+      ...t,
+      clips: t.clips.map((c) => {
+        if (c.id === clipId) {
+          return {
+            ...c,
+            textStyle: {
+              ...(c.textStyle || {}),
+              ...templateConfig.style,
+            },
           };
         }
         return c;

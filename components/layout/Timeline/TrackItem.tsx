@@ -491,7 +491,7 @@ export const TrackItem: React.FC<TrackItemProps> = ({ track, isSnapping = true }
             </div>
 
             {/* Waveform / Visual Content Strip */}
-            <div className="h-4 px-2 flex items-center gap-0.5 overflow-hidden opacity-60">
+            <div className="h-4 px-2 flex items-center gap-1.5 overflow-hidden opacity-75">
               {clip.waveform ? (
                 clip.waveform.map((peak, i) => (
                   <div
@@ -500,12 +500,35 @@ export const TrackItem: React.FC<TrackItemProps> = ({ track, isSnapping = true }
                     style={{ height: `${Math.max(2, peak * 14)}px` }}
                   />
                 ))
+              ) : clip.subtitleCues && clip.subtitleCues.length > 0 ? (
+                <div className="flex items-center gap-1.5 text-[9px] font-mono text-amber-300 font-semibold truncate">
+                  <span className="px-1 py-0.2 rounded bg-amber-500/30 text-amber-200">
+                    {clip.textStyle?.captionTemplate || 'karaoke'}
+                  </span>
+                  <span className="truncate opacity-80">{clip.subtitleCues[0]?.text}</span>
+                </div>
               ) : clip.textContent ? (
                 <span className="text-[10px] italic truncate">{clip.textContent}</span>
               ) : (
                 <div className="w-full h-1 bg-white/20 rounded-full" />
               )}
             </div>
+
+            {/* Subtitle Cue Division Markers */}
+            {clip.subtitleCues && clip.subtitleCues.length > 0 && (
+              <div className="absolute bottom-0 left-0 right-0 h-1.5 overflow-hidden pointer-events-none opacity-80">
+                {clip.subtitleCues.map((cue, idx) => {
+                  const cueLeftPct = Math.min(100, Math.max(0, (cue.startMs / Math.max(1, clip.durationMs)) * 100));
+                  return (
+                    <div
+                      key={idx}
+                      style={{ left: `${cueLeftPct}%` }}
+                      className="absolute bottom-0 w-0.5 h-full bg-amber-400 rounded-t shadow-sm"
+                    />
+                  );
+                })}
+              </div>
+            )}
 
             {/* Right Trim Handle */}
             <div

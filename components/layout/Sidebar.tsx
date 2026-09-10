@@ -25,9 +25,11 @@ import {
   RefreshCw,
   Eye,
   GripVertical,
+  Subtitles,
 } from 'lucide-react';
+import { CaptionStudio } from '@/components/captions/CaptionStudio';
 
-type SidebarTab = 'media' | 'text' | 'audio' | 'ai' | 'effects';
+type SidebarTab = 'media' | 'captions' | 'text' | 'audio' | 'ai' | 'effects';
 
 export const Sidebar: React.FC = () => {
   const [activeTab, setActiveTab] = useState<SidebarTab>('media');
@@ -300,6 +302,17 @@ export const Sidebar: React.FC = () => {
           <span>Text</span>
         </button>
         <button
+          onClick={() => setActiveTab('captions')}
+          className={`flex-1 py-2 flex flex-col items-center gap-1 rounded-md text-[11px] font-medium transition ${
+            activeTab === 'captions'
+              ? 'bg-editor-surface2 text-amber-400 shadow-sm'
+              : 'text-slate-400 hover:text-slate-200 hover:bg-editor-surface2/50'
+          }`}
+        >
+          <Subtitles className="w-4 h-4 text-amber-400" />
+          <span>Captions</span>
+        </button>
+        <button
           onClick={() => setActiveTab('audio')}
           className={`flex-1 py-2 flex flex-col items-center gap-1 rounded-md text-[11px] font-medium transition ${
             activeTab === 'audio'
@@ -547,6 +560,9 @@ export const Sidebar: React.FC = () => {
           </div>
         )}
 
+        {/* CAPTIONS TAB */}
+        {activeTab === 'captions' && <CaptionStudio />}
+
         {/* AUDIO TAB */}
         {activeTab === 'audio' && (
           <div className="flex flex-col gap-4">
@@ -645,11 +661,11 @@ export const Sidebar: React.FC = () => {
                 </div>
               ) : (
                 <button
-                  onClick={handleRunAutoCaptions}
+                  onClick={() => setActiveTab('captions')}
                   className="w-full py-2 px-3 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-medium text-xs flex items-center justify-center gap-2 shadow-lg shadow-purple-500/20 transition"
                 >
                   <Sparkles className="w-3.5 h-3.5" />
-                  <span>Generate AI Subtitles</span>
+                  <span>Open Auto Caption Studio</span>
                 </button>
               )}
             </div>
