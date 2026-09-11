@@ -132,58 +132,8 @@ interface EditorStore extends ProjectState {
   loadSampleProject: () => void;
 }
 
-const INITIAL_TRACKS: Track[] = [
-  {
-    id: 'track-text-1',
-    name: 'Text & Titles',
-    type: 'text',
-    clips: [],
-    muted: false,
-    locked: false,
-    visible: true,
-    volume: 1,
-  },
-  {
-    id: 'track-overlay-1',
-    name: 'Overlays & VFX',
-    type: 'overlay',
-    clips: [],
-    muted: false,
-    locked: false,
-    visible: true,
-    volume: 1,
-  },
-  {
-    id: 'track-video-1',
-    name: 'Main Video Track',
-    type: 'video',
-    clips: [],
-    muted: false,
-    locked: false,
-    visible: true,
-    volume: 1,
-  },
-  {
-    id: 'track-audio-1',
-    name: 'Background Music',
-    type: 'audio',
-    clips: [],
-    muted: false,
-    locked: false,
-    visible: true,
-    volume: 1,
-  },
-  {
-    id: 'track-audio-2',
-    name: 'Voiceover & SFX',
-    type: 'audio',
-    clips: [],
-    muted: false,
-    locked: false,
-    visible: true,
-    volume: 1,
-  },
-];
+// No pre-defined tracks — tracks are created dynamically when content is added
+const INITIAL_TRACKS: Track[] = [];
 
 function calculateProjectDuration(tracks: Track[]): number {
   let maxDuration = 10000; // minimum 10 seconds
@@ -205,7 +155,7 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
   canvasWidth: 1920,
   canvasHeight: 1080,
   fps: 30,
-  durationMs: 15000,
+  durationMs: 30000,
   tracks: INITIAL_TRACKS,
   selectedClipId: null,
   selectedTrackId: null,
@@ -219,7 +169,7 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
   transcriptionProgress: 0,
   clipboardClip: null,
   mediaAssets: [],
-  history: [{ tracks: INITIAL_TRACKS, durationMs: 15000 }],
+  history: [{ tracks: INITIAL_TRACKS, durationMs: 30000 }],
   historyIndex: 0,
 
   setPlayhead: (ms) => {
@@ -784,13 +734,14 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
     }),
 
   loadSampleProject: () => {
-    const cleanTracks: Track[] = INITIAL_TRACKS.map((t) => ({ ...t, clips: [] }));
     set({
-      tracks: cleanTracks,
-      durationMs: 10000,
+      tracks: [],
+      durationMs: 30000,
       playheadMs: 0,
       selectedClipId: null,
-      history: [{ tracks: cleanTracks, durationMs: 10000 }],
+      selectedTrackId: null,
+      mediaAssets: [],
+      history: [{ tracks: [], durationMs: 30000 }],
       historyIndex: 0,
     });
   },

@@ -15,7 +15,7 @@ import {
   ZoomIn,
   ZoomOut,
   Maximize2,
-  Layers,
+  Film,
   Clock,
   SquareDashed,
   X,
@@ -37,6 +37,7 @@ export const TimelineContainer: React.FC = () => {
     duplicateClip,
     fps,
     addClip,
+    addTrack,
     addMediaAsset,
   } = useEditorStore();
 
@@ -54,6 +55,10 @@ export const TimelineContainer: React.FC = () => {
   const rangeAnchorMs = useRef<number | null>(null);
 
   const timelineWidthPx = Math.max(1200, msToPx(durationMs, zoom) + 400);
+
+  // Only show lanes for tracks that have clips (keeps timeline clean)
+  const populatedTracks = tracks.filter((t) => t.clips.length > 0);
+  const hasContent = populatedTracks.length > 0;
 
   // Playhead scrubbing interaction on Ruler / Canvas
   const handleRulerMouseDown = (e: React.MouseEvent) => {
@@ -208,14 +213,27 @@ export const TimelineContainer: React.FC = () => {
       dropMs = snappedTime;
     }
 
-    // 1. Internal media asset dropped from Media Bin
+      // 1. Internal media asset dropped from Media Bin
     const assetJson = e.dataTransfer.getData('application/altra-asset');
     if (assetJson) {
       try {
         const asset: MediaAsset = JSON.parse(assetJson);
-        let targetTrack = tracks.find((t) => t.type === asset.type);
+        let targetTrack = tracks.find((t) => t.type === asset.type && !t.locked);
         if (!targetTrack) {
-          targetTrack = tracks.find((t) => t.type === 'video') || tracks[0];
+          // Auto-create a track for this media type
+          const trackNames: Record<string, string> = {
+            video: 'Main Video',
+            audio: 'Audio',
+            image: 'Images',
+            text: 'Text & Titles',
+            subtitle: 'Captions',
+            overlay: 'Overlays',
+          };
+          const newTrackId = addTrack(
+            asset.type as 'video' | 'audio' | 'text' | 'overlay',
+            trackNames[asset.type] || asset.type
+          );
+          targetTrack = { id: newTrackId, type: asset.type as 'video' | 'audio' | 'text' | 'overlay', clips: [], name: '', muted: false, locked: false, visible: true, volume: 1 };
         }
         if (targetTrack) {
           addClip(
@@ -238,6 +256,36 @@ export const TimelineContainer: React.FC = () => {
       }
     }
 
+    // 2. Clip preset dropped from Sidebar (text, subtitle, overlay elements)
+    const clipJson = e.dataTransfer.getData('application/altra-clip');
+    if (clipJson) {
+      try {
+        const clipData = JSON.parse(clipJson);
+        const clipType = clipData.type || 'text';
+        let targetTrack = tracks.find((t) => t.type === clipType && !t.locked);
+        if (!targetTrack) {
+          const trackNames: Record<string, string> = {
+            text: 'Text & Titles',
+            subtitle: 'Captions',
+            overlay: 'Overlays',
+            video: 'Main Video',
+            audio: 'Audio',
+          };
+          const newTrackId = addTrack(
+            (clipType === 'subtitle' ? 'text' : clipType) as 'video' | 'audio' | 'text' | 'overlay',
+            trackNames[clipType] || clipType
+          );
+          targetTrack = { id: newTrackId, type: 'text', clips: [], name: '', muted: false, locked: false, visible: true, volume: 1 };
+        }
+        if (targetTrack) {
+          addClip(targetTrack.id, clipData, dropMs);
+        }
+        return;
+      } catch (err) {
+        console.error('Error handling container dropped clip preset:', err);
+      }
+    }
+
     // 2. External media files dropped from Windows Explorer / Desktop
     const files = e.dataTransfer.files;
     if (files && files.length > 0) {
@@ -247,9 +295,22 @@ export const TimelineContainer: React.FC = () => {
         try {
           const asset = await inspectMediaFile(file);
           addMediaAsset(asset);
-          let targetTrack = tracks.find((t) => t.type === asset.type);
+          let targetTrack = tracks.find((t) => t.type === asset.type && !t.locked);
           if (!targetTrack) {
-            targetTrack = tracks.find((t) => t.type === 'video') || tracks[0];
+            // Auto-create appropriate track
+            const trackNames: Record<string, string> = {
+              video: 'Main Video',
+              audio: 'Audio',
+              image: 'Images',
+              text: 'Text & Titles',
+              subtitle: 'Captions',
+              overlay: 'Overlays',
+            };
+            const newTrackId = addTrack(
+              asset.type as 'video' | 'audio' | 'text' | 'overlay',
+              trackNames[asset.type] || asset.type
+            );
+            targetTrack = { id: newTrackId, type: asset.type as 'video' | 'audio' | 'text' | 'overlay', clips: [], name: '', muted: false, locked: false, visible: true, volume: 1 };
           }
           if (targetTrack) {
             addClip(
@@ -591,11 +652,32 @@ export const TimelineContainer: React.FC = () => {
               </div>
             </div>
 
-            {/* TRACK LANES */}
+            {/* TRACK LANES — only render populated tracks */}
             <div className="flex flex-col flex-1">
-              {tracks.map((track) => (
-                <TrackItem key={track.id} track={track} isSnapping={isSnapping} />
-              ))}
+              {!hasContent ? (
+                /* Empty timeline drop zone */
+                <div
+                  onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; }}
+                  onDrop={handleContainerDrop}
+                  className="flex flex-col items-center justify-center flex-1 min-h-[80px] gap-3 border-2 border-dashed border-editor-border/40 rounded-xl mx-4 my-3 hover:border-cyan-500/50 hover:bg-cyan-500/5 transition-all group cursor-default"
+                >
+                  <div className="flex flex-col items-center gap-1.5 opacity-50 group-hover:opacity-80 transition-opacity">
+                    <div className="w-10 h-10 rounded-full bg-editor-surface2 flex items-center justify-center">
+                      <Film className="w-5 h-5 text-cyan-400" />
+                    </div>
+                    <p className="text-xs font-semibold text-slate-400 group-hover:text-slate-300 transition-colors">
+                      Drop media here to start editing
+                    </p>
+                    <p className="text-[10px] text-slate-600">
+                      Video · Audio · Images · Text
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                populatedTracks.map((track) => (
+                  <TrackItem key={track.id} track={track} isSnapping={isSnapping} />
+                ))
+              )}
             </div>
           </div>
         </div>
