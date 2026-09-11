@@ -2,8 +2,7 @@
 
 import React, { useState, useRef } from 'react';
 import { useEditorStore } from '@/store/useEditorStore';
-import { inspectMediaFile, createSyntheticVideoAsset } from '@/lib/utils/media';
-import { generateSynthwaveAudioWavUrl } from '@/lib/audio/synthAudio';
+import { inspectMediaFile } from '@/lib/utils/media';
 import { MediaAsset, TextStyle, FilterSettings } from '@/types/editor';
 import {
   FolderOpen,
@@ -104,18 +103,6 @@ export const Sidebar: React.FC = () => {
         waveform: asset.waveform,
       });
     }
-  };
-
-  const handleAddSyntheticDemo = (type: 'cyberpunk' | 'countdown' | 'nature' | 'chroma-demo') => {
-    const titles = {
-      cyberpunk: 'Cyberpunk Neon Visual',
-      countdown: 'Retro Countdown Loop',
-      nature: 'Nature Emerald Gradient',
-      'chroma-demo': 'Green Screen Demo Subject',
-    };
-    const asset = createSyntheticVideoAsset(titles[type], type);
-    addMediaAsset(asset);
-    handleAddAssetToTimeline(asset);
   };
 
   const textPresets: Array<{ name: string; text: string; style: TextStyle; tag: string }> = [
@@ -276,79 +263,109 @@ export const Sidebar: React.FC = () => {
   };
 
   return (
-    <aside className="w-80 border-r border-editor-border bg-editor-surface flex flex-col select-none flex-shrink-0 z-20">
-      {/* Navigation Tabs */}
-      <div className="flex border-b border-editor-border bg-editor-bg p-1 gap-1">
+    <aside className="w-88 border-r border-editor-border bg-editor-surface flex select-none flex-shrink-0 z-20">
+      {/* CapCut Vertical Slim Icon Navigation Strip */}
+      <div className="w-16 border-r border-editor-border bg-editor-bg flex flex-col items-center py-2.5 gap-1.5 flex-shrink-0">
         <button
           onClick={() => setActiveTab('media')}
-          className={`flex-1 py-2 flex flex-col items-center gap-1 rounded-md text-[11px] font-medium transition ${
+          className={`w-13 py-2 flex flex-col items-center gap-1 rounded-xl text-[10px] font-semibold transition ${
             activeTab === 'media'
-              ? 'bg-editor-surface2 text-indigo-400 shadow-sm'
-              : 'text-slate-400 hover:text-slate-200 hover:bg-editor-surface2/50'
+              ? 'bg-cyan-500/15 text-cyan-400 border border-cyan-500/30 shadow-sm'
+              : 'text-slate-400 hover:text-slate-200 hover:bg-editor-surface2/60'
           }`}
+          title="Media Assets"
         >
           <FolderOpen className="w-4 h-4" />
           <span>Media</span>
         </button>
+
+        <button
+          onClick={() => setActiveTab('captions')}
+          className={`w-13 py-2 flex flex-col items-center gap-1 rounded-xl text-[10px] font-semibold transition relative ${
+            activeTab === 'captions'
+              ? 'bg-amber-500/20 text-amber-300 border border-amber-400/40 shadow-sm'
+              : 'text-slate-400 hover:text-slate-200 hover:bg-editor-surface2/60'
+          }`}
+          title="Auto Captions (AI)"
+        >
+          <div className="relative">
+            <Subtitles className="w-4 h-4 text-amber-400" />
+            <span className="absolute -top-1 -right-2 px-1 py-0.2 rounded-full bg-amber-400 text-slate-950 font-black text-[7px] leading-none">
+              AI
+            </span>
+          </div>
+          <span>Captions</span>
+        </button>
+
         <button
           onClick={() => setActiveTab('text')}
-          className={`flex-1 py-2 flex flex-col items-center gap-1 rounded-md text-[11px] font-medium transition ${
+          className={`w-13 py-2 flex flex-col items-center gap-1 rounded-xl text-[10px] font-semibold transition ${
             activeTab === 'text'
-              ? 'bg-editor-surface2 text-indigo-400 shadow-sm'
-              : 'text-slate-400 hover:text-slate-200 hover:bg-editor-surface2/50'
+              ? 'bg-cyan-500/15 text-cyan-400 border border-cyan-500/30 shadow-sm'
+              : 'text-slate-400 hover:text-slate-200 hover:bg-editor-surface2/60'
           }`}
+          title="Text & Titles"
         >
           <Type className="w-4 h-4" />
           <span>Text</span>
         </button>
-        <button
-          onClick={() => setActiveTab('captions')}
-          className={`flex-1 py-2 flex flex-col items-center gap-1 rounded-md text-[11px] font-medium transition ${
-            activeTab === 'captions'
-              ? 'bg-editor-surface2 text-amber-400 shadow-sm'
-              : 'text-slate-400 hover:text-slate-200 hover:bg-editor-surface2/50'
-          }`}
-        >
-          <Subtitles className="w-4 h-4 text-amber-400" />
-          <span>Captions</span>
-        </button>
+
         <button
           onClick={() => setActiveTab('audio')}
-          className={`flex-1 py-2 flex flex-col items-center gap-1 rounded-md text-[11px] font-medium transition ${
+          className={`w-13 py-2 flex flex-col items-center gap-1 rounded-xl text-[10px] font-semibold transition ${
             activeTab === 'audio'
-              ? 'bg-editor-surface2 text-indigo-400 shadow-sm'
-              : 'text-slate-400 hover:text-slate-200 hover:bg-editor-surface2/50'
+              ? 'bg-cyan-500/15 text-cyan-400 border border-cyan-500/30 shadow-sm'
+              : 'text-slate-400 hover:text-slate-200 hover:bg-editor-surface2/60'
           }`}
+          title="Audio & Sounds"
         >
           <Music className="w-4 h-4" />
           <span>Audio</span>
         </button>
+
         <button
           onClick={() => setActiveTab('ai')}
-          className={`flex-1 py-2 flex flex-col items-center gap-1 rounded-md text-[11px] font-medium transition ${
+          className={`w-13 py-2 flex flex-col items-center gap-1 rounded-xl text-[10px] font-semibold transition ${
             activeTab === 'ai'
-              ? 'bg-editor-surface2 text-indigo-400 shadow-sm'
-              : 'text-slate-400 hover:text-slate-200 hover:bg-editor-surface2/50'
+              ? 'bg-purple-500/20 text-purple-300 border border-purple-400/40 shadow-sm'
+              : 'text-slate-400 hover:text-slate-200 hover:bg-editor-surface2/60'
           }`}
+          title="AI Tools"
         >
           <Sparkles className="w-4 h-4 text-purple-400" />
           <span>AI Tools</span>
         </button>
+
         <button
           onClick={() => setActiveTab('effects')}
-          className={`flex-1 py-2 flex flex-col items-center gap-1 rounded-md text-[11px] font-medium transition ${
+          className={`w-13 py-2 flex flex-col items-center gap-1 rounded-xl text-[10px] font-semibold transition ${
             activeTab === 'effects'
-              ? 'bg-editor-surface2 text-indigo-400 shadow-sm'
-              : 'text-slate-400 hover:text-slate-200 hover:bg-editor-surface2/50'
+              ? 'bg-cyan-500/15 text-cyan-400 border border-cyan-500/30 shadow-sm'
+              : 'text-slate-400 hover:text-slate-200 hover:bg-editor-surface2/60'
           }`}
+          title="Visual Filters"
         >
           <Sliders className="w-4 h-4" />
           <span>Filters</span>
         </button>
       </div>
 
-      {/* Tab Contents */}
-      <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+      {/* Expanded Resource Drawer Panel */}
+      <div className="flex-1 flex flex-col min-w-0 bg-editor-surface">
+        <div className="h-9 px-3.5 border-b border-editor-border flex items-center justify-between bg-editor-surface2/40">
+          <span className="text-xs font-bold text-white uppercase tracking-wider">
+            {activeTab === 'media' && 'Media Library'}
+            {activeTab === 'captions' && 'Auto Captions Studio'}
+            {activeTab === 'text' && 'Titles & Presets'}
+            {activeTab === 'audio' && 'Audio & SFX'}
+            {activeTab === 'ai' && 'AI Creator Suite'}
+            {activeTab === 'effects' && 'Color Grading'}
+          </span>
+          <span className="text-[9px] text-slate-500 font-mono font-bold">CAPCUT PRO</span>
+        </div>
+
+        {/* Tab Contents */}
+        <div className="flex-1 overflow-y-auto p-3.5 custom-scrollbar">
         {/* MEDIA TAB */}
         {activeTab === 'media' && (
           <div className="flex flex-col gap-4">
@@ -381,47 +398,6 @@ export const Sidebar: React.FC = () => {
               </span>
             </div>
 
-            {/* Instant Sample Generator */}
-            <div className="flex flex-col gap-2">
-              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Quick Demos</span>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  draggable={true}
-                  onDragStart={(e) => {
-                    const asset = createSyntheticVideoAsset('Cyberpunk Neon Visual', 'cyberpunk');
-                    addMediaAsset(asset);
-                    e.dataTransfer.setData('application/altra-asset', JSON.stringify(asset));
-                    e.dataTransfer.effectAllowed = 'copy';
-                  }}
-                  onClick={() => handleAddSyntheticDemo('cyberpunk')}
-                  className="p-2.5 rounded-lg bg-gradient-to-br from-indigo-950/60 to-purple-950/60 hover:from-indigo-900/60 hover:to-purple-900/60 border border-indigo-500/30 text-left transition flex flex-col gap-1 cursor-grab active:cursor-grabbing"
-                  title="Click or drag directly onto timeline"
-                >
-                  <span className="text-xs font-medium text-indigo-300 flex items-center gap-1">
-                    <Film className="w-3.5 h-3.5" /> Cyberpunk
-                  </span>
-                  <span className="text-[10px] text-slate-400">Synth Neon Canvas</span>
-                </button>
-                <button
-                  draggable={true}
-                  onDragStart={(e) => {
-                    const asset = createSyntheticVideoAsset('Green Screen Demo Subject', 'chroma-demo');
-                    addMediaAsset(asset);
-                    e.dataTransfer.setData('application/altra-asset', JSON.stringify(asset));
-                    e.dataTransfer.effectAllowed = 'copy';
-                  }}
-                  onClick={() => handleAddSyntheticDemo('chroma-demo')}
-                  className="p-2.5 rounded-lg bg-gradient-to-br from-emerald-950/60 to-teal-950/60 hover:from-emerald-900/60 hover:to-teal-900/60 border border-emerald-500/30 text-left transition flex flex-col gap-1 cursor-grab active:cursor-grabbing"
-                  title="Click or drag directly onto timeline"
-                >
-                  <span className="text-xs font-medium text-emerald-300 flex items-center gap-1">
-                    <Video className="w-3.5 h-3.5" /> Chroma Key
-                  </span>
-                  <span className="text-[10px] text-slate-400">Green Screen Test</span>
-                </button>
-              </div>
-            </div>
-
             {/* Media Assets List */}
             <div className="flex flex-col gap-2">
               <div className="flex items-center justify-between">
@@ -433,7 +409,7 @@ export const Sidebar: React.FC = () => {
 
               {mediaAssets.length === 0 ? (
                 <div className="p-4 text-center text-xs text-slate-500 bg-editor-surface2/30 rounded-lg border border-editor-border/40">
-                  No assets imported yet. Upload local files or click a quick demo above.
+                  No assets imported yet. Click above or drag and drop video, audio, or image files from your computer.
                 </div>
               ) : (
                 <div className="flex flex-col gap-2">
@@ -566,63 +542,83 @@ export const Sidebar: React.FC = () => {
         {/* AUDIO TAB */}
         {activeTab === 'audio' && (
           <div className="flex flex-col gap-4">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Audio Tracks & SFX</span>
-              <span className="text-[10px] text-slate-500">Drag to timeline</span>
+            {/* Audio Upload Drop Zone */}
+            <div
+              onClick={() => fileInputRef.current?.click()}
+              className="border-2 border-dashed border-editor-border hover:border-emerald-500/50 hover:bg-editor-surface2/60 rounded-xl p-4 flex flex-col items-center justify-center text-center cursor-pointer transition group"
+            >
+              <div className="w-10 h-10 rounded-full bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 mb-2 group-hover:scale-110 transition transform">
+                <Music className="w-5 h-5" />
+              </div>
+              <span className="text-xs font-semibold text-slate-200">
+                Import Audio, Music or SFX
+              </span>
+              <span className="text-[10px] text-slate-400 mt-1">
+                Supports MP3, WAV, AAC, M4A, OGG, FLAC
+              </span>
             </div>
+
+            {/* Audio Assets List */}
             <div className="flex flex-col gap-2">
-              {[
-                { title: 'Synthwave Midnight Loop', dur: '15s', bpm: '128 BPM' },
-                { title: 'Cinematic Ambient Drone', dur: '20s', bpm: 'Ambient' },
-                { title: 'Lo-Fi Chill Beats', dur: '12s', bpm: '90 BPM' },
-                { title: 'Modern Transition Whoosh', dur: '2s', bpm: 'SFX' },
-              ].map((item, idx) => (
-                <div
-                  key={idx}
-                  draggable={true}
-                  onDragStart={(e) => {
-                    const audioClip = {
-                      name: item.title,
-                      type: 'audio',
-                      durationMs: 14000,
-                      waveform: [0.3, 0.6, 0.8, 0.4, 0.7, 0.9, 0.5, 0.8, 0.3, 0.6],
-                    };
-                    e.dataTransfer.setData('application/altra-clip', JSON.stringify(audioClip));
-                    e.dataTransfer.effectAllowed = 'copy';
-                  }}
-                  className="p-2.5 rounded-lg bg-editor-surface2 border border-editor-border hover:border-emerald-500/40 flex items-center justify-between transition cursor-grab active:cursor-grabbing group"
-                  title="Click + or drag directly onto audio track"
-                >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <GripVertical className="w-3.5 h-3.5 text-slate-500 group-hover:text-slate-300 flex-shrink-0" />
-                    <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center flex-shrink-0">
-                      <Music className="w-4 h-4" />
-                    </div>
-                    <div className="flex flex-col min-w-0">
-                      <span className="text-xs font-medium text-slate-200 truncate">{item.title}</span>
-                      <span className="text-[10px] text-slate-400">{item.dur} • {item.bpm}</span>
-                    </div>
-                  </div>
-                  <button
-                    onClick={async () => {
-                      let audioTrack = tracks.find((t) => t.type === 'audio');
-                      if (!audioTrack) audioTrack = tracks[0];
-                      const realAudioUrl = await generateSynthwaveAudioWavUrl(15);
-                      addClip(audioTrack.id, {
-                        name: item.title,
-                        type: 'audio',
-                        src: realAudioUrl,
-                        durationMs: 14000,
-                        waveform: [0.3, 0.6, 0.8, 0.4, 0.7, 0.9, 0.5, 0.8, 0.3, 0.6],
-                      });
-                    }}
-                    className="p-1.5 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white transition flex-shrink-0"
-                    title="Add to Audio Track"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                  </button>
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                  Audio Files ({mediaAssets.filter((a) => a.type === 'audio').length})
+                </span>
+                <span className="text-[10px] text-slate-500">Drag to timeline</span>
+              </div>
+
+              {mediaAssets.filter((a) => a.type === 'audio').length === 0 ? (
+                <div className="p-4 text-center text-xs text-slate-500 bg-editor-surface2/30 rounded-lg border border-editor-border/40">
+                  No audio tracks imported yet. Click above to import your music, voiceover, or sound effects.
                 </div>
-              ))}
+              ) : (
+                <div className="flex flex-col gap-2">
+                  {mediaAssets
+                    .filter((a) => a.type === 'audio')
+                    .map((asset) => (
+                      <div
+                        key={asset.id}
+                        draggable={true}
+                        onDragStart={(e) => {
+                          e.dataTransfer.setData('application/altra-asset', JSON.stringify(asset));
+                          e.dataTransfer.effectAllowed = 'copy';
+                        }}
+                        className="group p-2.5 rounded-lg bg-editor-surface2 border border-editor-border hover:border-emerald-500/40 flex items-center justify-between gap-3 transition cursor-grab active:cursor-grabbing"
+                        title="Drag directly into audio track or click + to add"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <GripVertical className="w-3.5 h-3.5 text-slate-500 group-hover:text-slate-300 flex-shrink-0" />
+                          <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center flex-shrink-0">
+                            <Music className="w-4 h-4" />
+                          </div>
+                          <div className="flex flex-col min-w-0">
+                            <span className="text-xs font-medium text-slate-200 truncate">{asset.name}</span>
+                            <span className="text-[10px] text-slate-400">
+                              AUDIO • {(asset.durationMs / 1000).toFixed(1)}s
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
+                          <button
+                            onClick={() => handleAddAssetToTimeline(asset)}
+                            className="p-1.5 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white transition"
+                            title="Add to Timeline"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => removeMediaAsset(asset.id)}
+                            className="p-1.5 rounded-md bg-rose-600/20 hover:bg-rose-600/40 text-rose-400 transition"
+                            title="Delete Asset"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -719,6 +715,7 @@ export const Sidebar: React.FC = () => {
             </div>
           </div>
         )}
+        </div>
       </div>
     </aside>
   );

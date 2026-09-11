@@ -12,18 +12,9 @@ import { useKeyboardShortcuts } from '@/lib/hooks/useKeyboardShortcuts';
 
 export default function EditorPage() {
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
-  const { loadSampleProject, tracks } = useEditorStore();
 
   // Activate Windows keyboard shortcuts globally
   useKeyboardShortcuts();
-
-  // Load sample project on initial mount if empty
-  useEffect(() => {
-    const hasClips = tracks.some((t) => t.clips.length > 0);
-    if (!hasClips) {
-      loadSampleProject();
-    }
-  }, [loadSampleProject, tracks]);
 
   return (
     <main className="h-screen w-screen flex flex-col bg-editor-bg text-slate-100 overflow-hidden select-none">

@@ -222,65 +222,66 @@ export const PreviewPlayer: React.FC = () => {
       </div>
 
       {/* Bottom Playback Control Bar */}
-      <div className="h-12 border-t border-editor-border bg-editor-surface flex items-center justify-between px-4 z-10 flex-shrink-0">
+      <div className="h-11 border-t border-editor-border bg-editor-surface flex items-center justify-between px-3.5 z-10 flex-shrink-0">
         {/* Left: Timecode Display */}
-        <div className="flex items-center gap-2 font-mono text-xs">
-          <span className="font-semibold text-white tracking-wider">
+        <div className="flex items-center gap-1.5 font-mono text-xs">
+          <span className="font-bold text-cyan-400 tracking-wider">
             {formatTimecode(playheadMs, fps)}
           </span>
-          <span className="text-slate-500">/</span>
-          <span className="text-slate-400">
+          <span className="text-slate-600">/</span>
+          <span className="text-slate-400 font-medium">
             {formatTimecode(durationMs, fps)}
           </span>
         </div>
 
-        {/* Center: Main Playback Controls */}
-        <div className="flex items-center gap-2">
+        {/* Center: CapCut Signature Playback Controls */}
+        <div className="flex items-center gap-1.5">
           <button
             onClick={() => setPlayhead(0)}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-editor-surface2 transition"
+            className="p-1.5 rounded-md text-slate-400 hover:text-white hover:bg-editor-surface2 transition"
             title="Jump to Start (Home)"
           >
-            <SkipBack className="w-4 h-4" />
+            <SkipBack className="w-3.5 h-3.5" />
           </button>
 
           <button
             onClick={() => setPlayhead(Math.max(0, playheadMs - 1000))}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-editor-surface2 transition"
+            className="p-1.5 rounded-md text-slate-400 hover:text-white hover:bg-editor-surface2 transition"
             title="Step Back 1s"
           >
-            <RotateCcw className="w-3.5 h-3.5" />
+            <RotateCcw className="w-3 h-3" />
           </button>
 
+          {/* CapCut Circular Play Button */}
           <button
             onClick={() => {
               audioManager.unlock();
               togglePlay();
             }}
-            className="w-9 h-9 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white flex items-center justify-center transition shadow-lg shadow-indigo-600/30 transform active:scale-95"
+            className="w-8 h-8 rounded-full bg-white hover:bg-slate-200 text-slate-950 flex items-center justify-center transition shadow-[0_0_12px_rgba(255,255,255,0.35)] transform active:scale-95"
             title={isPlaying ? 'Pause (Space)' : 'Play (Space)'}
           >
             {isPlaying ? (
-              <Pause className="w-4 h-4 fill-white" />
+              <Pause className="w-3.5 h-3.5 fill-slate-950 text-slate-950" />
             ) : (
-              <Play className="w-4 h-4 fill-white ml-0.5" />
+              <Play className="w-3.5 h-3.5 fill-slate-950 text-slate-950 ml-0.5" />
             )}
           </button>
 
           <button
             onClick={() => setPlayhead(Math.min(durationMs, playheadMs + 1000))}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-editor-surface2 transition"
+            className="p-1.5 rounded-md text-slate-400 hover:text-white hover:bg-editor-surface2 transition"
             title="Step Forward 1s"
           >
-            <RotateCcw className="w-3.5 h-3.5 rotate-180" />
+            <RotateCcw className="w-3 h-3 rotate-180" />
           </button>
 
           <button
             onClick={() => setPlayhead(durationMs)}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-editor-surface2 transition"
+            className="p-1.5 rounded-md text-slate-400 hover:text-white hover:bg-editor-surface2 transition"
             title="Jump to End (End)"
           >
-            <SkipForward className="w-4 h-4" />
+            <SkipForward className="w-3.5 h-3.5" />
           </button>
         </div>
 

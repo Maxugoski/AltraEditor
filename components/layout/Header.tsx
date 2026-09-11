@@ -34,7 +34,6 @@ export const Header: React.FC<HeaderProps> = ({ onOpenExport }) => {
     redo,
     historyIndex,
     history,
-    loadSampleProject,
     tracks,
   } = useEditorStore();
 
@@ -62,22 +61,27 @@ export const Header: React.FC<HeaderProps> = ({ onOpenExport }) => {
   const totalClips = tracks.reduce((sum, t) => sum + t.clips.length, 0);
 
   return (
-    <header className="h-14 border-b border-editor-border bg-editor-surface flex items-center justify-between px-4 select-none z-30">
-      {/* Left: Brand & Project Name */}
-      <div className="flex items-center gap-4">
+    <header className="h-13 border-b border-editor-border bg-editor-surface flex items-center justify-between px-3 select-none z-30">
+      {/* Left: CapCut Brand Mark & Project Name */}
+      <div className="flex items-center gap-3">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-indigo-500/20">
-            <Layers className="w-4 h-4 text-white" />
+          {/* CapCut-style Geometric Neon Cut Logo */}
+          <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-cyan-400 via-teal-400 to-emerald-400 flex items-center justify-center shadow-[0_0_12px_rgba(0,242,254,0.35)]">
+            <div className="w-3.5 h-3.5 bg-slate-950 rounded-sm transform rotate-45 flex items-center justify-center">
+              <div className="w-1.5 h-1.5 bg-cyan-400 rounded-full" />
+            </div>
           </div>
-          <div className="flex flex-col">
-            <span className="font-bold text-sm bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent leading-none">
-              ALTRA<span className="text-indigo-400 font-extrabold ml-0.5">STUDIO</span>
+          <div className="flex items-center gap-1.5">
+            <span className="font-black text-sm tracking-tight text-white leading-none">
+              Cap<span className="text-cyan-400">Cut</span>
             </span>
-            <span className="text-[10px] text-indigo-400/80 font-medium tracking-wider">CLIENT-SIDE AI EDITOR</span>
+            <span className="text-[10px] px-1 py-0.2 rounded bg-cyan-400/20 text-cyan-300 font-bold border border-cyan-400/30">
+              PRO
+            </span>
           </div>
         </div>
 
-        <div className="h-5 w-px bg-editor-border mx-1" />
+        <div className="h-4 w-px bg-editor-border mx-1" />
 
         {/* Project Title */}
         {isEditingTitle ? (
@@ -88,7 +92,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenExport }) => {
             onBlur={handleTitleSubmit}
             onKeyDown={(e) => e.key === 'Enter' && handleTitleSubmit()}
             autoFocus
-            className="bg-editor-surface2 text-sm text-white px-2.5 py-1 rounded border border-indigo-500 outline-none w-48"
+            className="bg-editor-surface2 text-xs text-white px-2 py-0.5 rounded border border-cyan-400 outline-none w-44 font-medium"
           />
         ) : (
           <button
@@ -97,18 +101,18 @@ export const Header: React.FC<HeaderProps> = ({ onOpenExport }) => {
               setIsEditingTitle(true);
             }}
             title="Click to rename project"
-            className="text-xs font-medium text-slate-300 hover:text-white px-2 py-1 rounded hover:bg-editor-surface2 transition flex items-center gap-1.5"
+            className="text-xs font-semibold text-slate-300 hover:text-white px-2 py-0.5 rounded hover:bg-editor-surface2 transition flex items-center gap-1.5"
           >
             <span>{title}</span>
-            <span className="text-[10px] text-slate-500">({totalClips} clips)</span>
+            <span className="text-[10px] text-slate-500 font-mono">({totalClips})</span>
           </button>
         )}
       </div>
 
-      {/* Center: Undo/Redo & Aspect Ratio & Demo Template */}
-      <div className="flex items-center gap-3">
+      {/* Center: Undo/Redo & Aspect Ratio & Demo */}
+      <div className="flex items-center gap-2.5">
         {/* Undo / Redo */}
-        <div className="flex items-center bg-editor-surface2/80 rounded-lg p-0.5 border border-editor-border/60">
+        <div className="flex items-center bg-editor-surface2/90 rounded-lg p-0.5 border border-editor-border/80">
           <button
             onClick={undo}
             disabled={!canUndo}
@@ -132,14 +136,14 @@ export const Header: React.FC<HeaderProps> = ({ onOpenExport }) => {
         </div>
 
         {/* Aspect Ratio Selector */}
-        <div className="flex items-center bg-editor-surface2/80 rounded-lg px-2 py-1 border border-editor-border/60 text-xs">
-          <span className="text-slate-400 mr-2 flex items-center gap-1 text-[11px]">
-            <Monitor className="w-3.5 h-3.5 text-slate-400" /> Ratio:
+        <div className="flex items-center bg-editor-surface2/90 rounded-lg px-2.5 py-1 border border-editor-border/80 text-xs">
+          <span className="text-slate-400 mr-2 flex items-center gap-1 text-[11px] font-medium">
+            <Monitor className="w-3.5 h-3.5 text-cyan-400" /> Ratio:
           </span>
           <select
             value={aspectRatio}
             onChange={(e) => setAspectRatio(e.target.value as AspectRatio)}
-            className="bg-transparent text-slate-200 font-medium outline-none cursor-pointer hover:text-white"
+            className="bg-transparent text-slate-200 font-bold text-[11px] outline-none cursor-pointer hover:text-white"
           >
             {aspectRatios.map((r) => (
               <option key={r.value} value={r.value} className="bg-editor-surface text-slate-200">
@@ -148,31 +152,22 @@ export const Header: React.FC<HeaderProps> = ({ onOpenExport }) => {
             ))}
           </select>
         </div>
-
-        {/* Demo Loader */}
-        <button
-          onClick={loadSampleProject}
-          className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-lg bg-indigo-500/10 text-indigo-300 hover:bg-indigo-500/20 border border-indigo-500/30 transition shadow-sm"
-          title="Load interactive sample project"
-        >
-          <Sparkles className="w-3.5 h-3.5 text-indigo-400 animate-pulse" />
-          <span>Demo Template</span>
-        </button>
       </div>
 
       {/* Right: Export & Engine Status */}
-      <div className="flex items-center gap-3">
-        <div className="hidden md:flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[11px]">
+      <div className="flex items-center gap-2.5">
+        <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[11px] font-mono font-semibold">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
-          <span>100% Client-Side WASM</span>
+          <span>Offline AI Engine</span>
         </div>
 
+        {/* CapCut Signature Rounded-Full Cyan Export Button */}
         <button
           onClick={onOpenExport}
-          className="flex items-center gap-2 px-4 py-1.5 rounded-lg bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-medium text-xs shadow-lg shadow-indigo-500/25 transition transform active:scale-95"
+          className="flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-gradient-to-r from-cyan-400 via-teal-400 to-emerald-400 hover:brightness-110 text-slate-950 font-bold text-xs shadow-[0_0_16px_rgba(0,242,254,0.35)] transition transform active:scale-95"
         >
-          <Download className="w-3.5 h-3.5" />
-          <span>Export Video</span>
+          <Download className="w-3.5 h-3.5 text-slate-950 stroke-[2.5]" />
+          <span>Export</span>
         </button>
       </div>
     </header>

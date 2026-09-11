@@ -50,7 +50,7 @@ export const CaptionStudio: React.FC = () => {
     (t) => t.type === 'video' || t.type === 'audio'
   );
 
-  const handleGenerateCaptions = async (isDemo = false) => {
+  const handleGenerateCaptions = async () => {
     try {
       setTranscriptionState(true, 5);
       setStatusMessage('Extracting 16kHz audio from timeline...');
@@ -304,15 +304,6 @@ export const CaptionStudio: React.FC = () => {
           >
             <Sparkles className="w-4 h-4 text-slate-950" />
             <span>Generate AI Auto Captions</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => handleGenerateCaptions(true)}
-            className="w-full py-2 px-3 rounded-lg bg-editor-surface2 border border-editor-border hover:border-amber-400/50 text-slate-300 hover:text-white font-medium text-[11px] flex items-center justify-center gap-1.5 transition"
-          >
-            <Wand2 className="w-3.5 h-3.5 text-amber-400" />
-            <span>Instant Demo Captions (1-Click Test)</span>
           </button>
         </div>
       )}

@@ -366,26 +366,26 @@ export const TrackItem: React.FC<TrackItemProps> = ({ track, isSnapping = true }
 
   const getClipColorClasses = (clip: Clip, isSelected: boolean, isDragging: boolean) => {
     if (isDragging) {
-      return 'bg-indigo-600 text-white ring-2 ring-indigo-300 shadow-2xl scale-[1.01] z-40 opacity-95';
+      return 'bg-cyan-600 text-white ring-2 ring-cyan-300 shadow-2xl scale-[1.01] z-40 opacity-95';
     }
     if (clip.type === 'video') {
       return isSelected
-        ? 'bg-blue-600/90 border-blue-400 text-white shadow-lg shadow-blue-500/20'
-        : 'bg-blue-950/80 border-blue-700/60 text-blue-200 hover:border-blue-500';
+        ? 'bg-blue-600/90 border-cyan-400 ring-2 ring-cyan-400/50 text-white shadow-lg shadow-cyan-500/25'
+        : 'bg-blue-950/80 border-blue-700/60 text-blue-200 hover:border-cyan-500/60';
     }
     if (clip.type === 'audio') {
       return isSelected
-        ? 'bg-emerald-600/90 border-emerald-400 text-white shadow-lg shadow-emerald-500/20'
-        : 'bg-emerald-950/80 border-emerald-700/60 text-emerald-200 hover:border-emerald-500';
+        ? 'bg-emerald-600/90 border-cyan-400 ring-2 ring-cyan-400/50 text-white shadow-lg shadow-cyan-500/25'
+        : 'bg-emerald-950/80 border-emerald-700/60 text-emerald-200 hover:border-cyan-500/60';
     }
     if (clip.type === 'text' || clip.type === 'subtitle') {
       return isSelected
-        ? 'bg-amber-600/90 border-amber-400 text-white shadow-lg shadow-amber-500/20'
-        : 'bg-amber-950/80 border-amber-700/60 text-amber-200 hover:border-amber-500';
+        ? 'bg-amber-600/90 border-amber-300 ring-2 ring-amber-400/50 text-white shadow-lg shadow-amber-500/25'
+        : 'bg-amber-950/80 border-amber-700/60 text-amber-200 hover:border-amber-500/70';
     }
     return isSelected
-      ? 'bg-purple-600/90 border-purple-400 text-white shadow-lg shadow-purple-500/20'
-      : 'bg-purple-950/80 border-purple-700/60 text-purple-200 hover:border-purple-500';
+      ? 'bg-purple-600/90 border-cyan-400 ring-2 ring-cyan-400/50 text-white shadow-lg shadow-cyan-500/25'
+      : 'bg-purple-950/80 border-purple-700/60 text-purple-200 hover:border-cyan-500/60';
   };
 
   return (

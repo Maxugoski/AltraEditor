@@ -20,6 +20,7 @@ import {
   SquareDashed,
   X,
   Play,
+  MousePointer,
 } from 'lucide-react';
 
 export const TimelineContainer: React.FC = () => {
@@ -151,8 +152,10 @@ export const TimelineContainer: React.FC = () => {
       }
     };
 
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
+    if (isScrubbing || isSelectingRange) {
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+    }
 
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
@@ -279,20 +282,44 @@ export const TimelineContainer: React.FC = () => {
     ticks.push(s);
   }
 
+  const handleFitTimeline = () => {
+    if (!scrollContainerRef.current) return;
+    const containerWidth = scrollContainerRef.current.clientWidth - 100;
+    if (containerWidth > 0 && durationMs > 0) {
+      const calculatedZoom = Math.max(20, Math.min(300, (containerWidth / durationMs) * 1000));
+      setZoom(Math.round(calculatedZoom));
+    }
+  };
+
   const playheadLeftPx = msToPx(playheadMs, zoom);
 
   return (
     <div className="h-72 border-t border-editor-border bg-editor-surface flex flex-col select-none z-20 flex-shrink-0">
       {/* Timeline Action Toolbar */}
-      <div className="h-10 border-b border-editor-border px-4 flex items-center justify-between bg-editor-bg">
-        {/* Left: Editing Tools */}
+      <div className="h-10 border-b border-editor-border px-3 flex items-center justify-between bg-editor-bg">
+        {/* Left: CapCut Editing Tools Strip */}
         <div className="flex items-center gap-1.5">
+          {/* Select Tool (V) */}
+          <button
+            type="button"
+            onClick={() => setRangeMode(false)}
+            className={`p-1.5 rounded-md text-xs border transition flex items-center gap-1 ${
+              !rangeMode
+                ? 'bg-cyan-500/20 border-cyan-400/50 text-cyan-300 shadow-sm'
+                : 'bg-editor-surface2 border-editor-border text-slate-400 hover:text-slate-200'
+            }`}
+            title="Selection Tool (V)"
+          >
+            <MousePointer className="w-3.5 h-3.5" />
+          </button>
+
+          {/* Split Razor Tool (S) */}
           <button
             onClick={() => splitClipAtPlayhead()}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-editor-surface2 hover:bg-editor-hover text-slate-200 text-xs font-medium border border-editor-border/80 transition"
+            className="flex items-center gap-1 px-2.5 py-1 rounded-md bg-editor-surface2 hover:bg-editor-hover text-slate-200 text-xs font-semibold border border-editor-border/80 transition"
             title="Split Clip at Playhead (S)"
           >
-            <Scissors className="w-3.5 h-3.5 text-indigo-400" />
+            <Scissors className="w-3.5 h-3.5 text-cyan-400" />
             <span>Split (S)</span>
           </button>
 
@@ -300,7 +327,7 @@ export const TimelineContainer: React.FC = () => {
             <>
               <button
                 onClick={() => duplicateClip(selectedClipId)}
-                className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-editor-surface2 hover:bg-editor-hover text-slate-300 text-xs border border-editor-border/80 transition"
+                className="flex items-center gap-1 px-2 py-1 rounded-md bg-editor-surface2 hover:bg-editor-hover text-slate-300 text-xs border border-editor-border/80 transition"
                 title="Duplicate Clip (Ctrl+D)"
               >
                 <Copy className="w-3.5 h-3.5" />
@@ -309,7 +336,7 @@ export const TimelineContainer: React.FC = () => {
 
               <button
                 onClick={() => removeClip(selectedClipId)}
-                className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-xs border border-rose-500/30 transition"
+                className="flex items-center gap-1 px-2 py-1 rounded-md bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-xs border border-rose-500/30 transition"
                 title="Delete Clip (Del)"
               >
                 <Trash2 className="w-3.5 h-3.5" />
@@ -318,20 +345,22 @@ export const TimelineContainer: React.FC = () => {
             </>
           )}
 
-          <div className="h-4 w-px bg-editor-border mx-1" />
+          <div className="h-4 w-px bg-editor-border mx-0.5" />
 
+          {/* Magnet / Auto Snapping */}
           <button
             onClick={() => setIsSnapping(!isSnapping)}
             className={`p-1.5 rounded-md text-xs border transition flex items-center gap-1 ${
               isSnapping
-                ? 'bg-indigo-500/20 border-indigo-500/40 text-indigo-300'
-                : 'bg-editor-surface2 border-editor-border text-slate-500'
+                ? 'bg-cyan-500/20 border-cyan-500/40 text-cyan-300 shadow-sm'
+                : 'bg-editor-surface2 border-editor-border text-slate-500 hover:text-slate-400'
             }`}
-            title={isSnapping ? 'Snapping Enabled' : 'Snapping Disabled'}
+            title={isSnapping ? 'Snapping Enabled (N)' : 'Snapping Disabled'}
           >
             <Magnet className="w-3.5 h-3.5" />
           </button>
 
+          {/* Range Selection / In-Out Tool */}
           <button
             type="button"
             onClick={() => setRangeMode(!rangeMode)}
@@ -340,19 +369,19 @@ export const TimelineContainer: React.FC = () => {
                 ? 'bg-amber-500/25 border-amber-400 text-amber-300 shadow-sm'
                 : 'bg-editor-surface2 border-editor-border text-slate-400 hover:text-slate-200'
             }`}
-            title="Highlight Timeline Range (R) - Click & drag cursor on timeline"
+            title="Highlight Timeline Range (R) - Click & drag on timeline"
           >
             <SquareDashed className="w-3.5 h-3.5 text-amber-400" />
             <span className="text-[11px] font-medium hidden sm:inline">Highlight (R)</span>
           </button>
 
           {highlightRange && highlightRange.endMs > highlightRange.startMs && (
-            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-indigo-950/70 border border-indigo-500/40 text-indigo-200 text-[10px] font-mono">
-              <span className="text-indigo-400 font-bold">Range:</span>
+            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-slate-900 border border-cyan-500/40 text-cyan-200 text-[10px] font-mono shadow-sm">
+              <span className="text-cyan-400 font-bold">Range:</span>
               <span>
                 {formatTimecode(highlightRange.startMs, fps)} → {formatTimecode(highlightRange.endMs, fps)}
               </span>
-              <span className="px-1 py-0.2 rounded bg-indigo-500/30 text-white font-bold text-[9px]">
+              <span className="px-1 py-0.2 rounded bg-cyan-500/30 text-cyan-100 font-bold text-[9px]">
                 {((highlightRange.endMs - highlightRange.startMs) / 1000).toFixed(2)}s
               </span>
               <button
@@ -361,13 +390,13 @@ export const TimelineContainer: React.FC = () => {
                 className="p-0.5 hover:text-white transition"
                 title="Clear Highlight Range"
               >
-                <X className="w-3 h-3 text-indigo-400 hover:text-white" />
+                <X className="w-3 h-3 text-cyan-400 hover:text-white" />
               </button>
             </div>
           )}
         </div>
 
-        {/* Right: Zoom Controls */}
+        {/* Right: CapCut Zoom & View Controls */}
         <div className="flex items-center gap-2">
           <button
             onClick={() => setZoom(zoom - 20)}
@@ -383,7 +412,7 @@ export const TimelineContainer: React.FC = () => {
             max="300"
             value={zoom}
             onChange={(e) => setZoom(Number(e.target.value))}
-            className="w-24 accent-indigo-500 cursor-pointer h-1.5 bg-editor-surface2 rounded-lg"
+            className="w-24 accent-cyan-400 cursor-pointer h-1.5 bg-editor-surface2 rounded-lg"
           />
 
           <button
@@ -395,8 +424,17 @@ export const TimelineContainer: React.FC = () => {
           </button>
 
           <button
+            type="button"
+            onClick={handleFitTimeline}
+            className="p-1 rounded text-slate-400 hover:text-cyan-300 hover:bg-editor-surface2 transition"
+            title="Fit Timeline to Screen"
+          >
+            <Maximize2 className="w-3.5 h-3.5" />
+          </button>
+
+          <button
             onClick={() => setZoom(80)}
-            className="px-1.5 py-0.5 text-[10px] text-slate-400 hover:text-white rounded bg-editor-surface2 transition"
+            className="px-1.5 py-0.5 text-[10px] text-slate-400 hover:text-white rounded bg-editor-surface2 transition font-medium"
           >
             Reset
           </button>

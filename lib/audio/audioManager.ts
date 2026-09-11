@@ -48,20 +48,31 @@ export class AudioManager {
     }
   }
 
-  public getAudioElement(clipId: string, src: string): HTMLAudioElement {
+  private clipSrcMap: Map<string, string> = new Map();
+
+  public getAudioElement(clipId: string, src: string): HTMLAudioElement | null {
+    if (!src || src.startsWith('synth-') || (!src.startsWith('blob:') && !src.startsWith('http') && !src.startsWith('data:'))) {
+      return null;
+    }
+
+    const currentRawSrc = this.clipSrcMap.get(clipId);
     let audio = this.audioElements.get(clipId);
-    if (!audio || audio.src !== src) {
+    if (!audio || currentRawSrc !== src) {
       if (audio) {
         audio.pause();
         audio.src = '';
       }
-      audio = new Audio(src);
-      audio.preload = 'auto';
-      // Only set crossOrigin for remote http(s) URLs, never for blob: or data:
-      if (src.startsWith('http://') || src.startsWith('https://')) {
-        audio.crossOrigin = 'anonymous';
+      try {
+        audio = new Audio(src);
+        audio.preload = 'auto';
+        if (src.startsWith('http://') || src.startsWith('https://')) {
+          audio.crossOrigin = 'anonymous';
+        }
+        this.audioElements.set(clipId, audio);
+        this.clipSrcMap.set(clipId, src);
+      } catch {
+        return null;
       }
-      this.audioElements.set(clipId, audio);
     }
     return audio;
   }
@@ -89,6 +100,8 @@ export class AudioManager {
       if (!clip.src) return;
 
       const audio = this.getAudioElement(clip.id, clip.src);
+      if (!audio) return;
+
       const isActive = playheadMs >= clip.startMs && playheadMs <= clip.startMs + clip.durationMs;
       const targetTime = ((playheadMs - clip.startMs) * clip.playbackRate + clip.sourceStartMs) / 1000;
       const finalVolume = (clip.muted || clip.trackMuted) ? 0 : Math.min(1, Math.max(0, clip.volume * clip.trackVolume));
