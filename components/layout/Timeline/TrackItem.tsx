@@ -5,7 +5,6 @@ import { Track, Clip, MediaAsset } from '@/types/editor';
 import { useEditorStore } from '@/store/useEditorStore';
 import { msToPx, pxToMs, formatTimecode, snapTime } from '@/lib/utils/time';
 import { inspectMediaFile } from '@/lib/utils/media';
-import { generateSynthwaveAudioWavUrl } from '@/lib/audio/synthAudio';
 import {
   Film,
   Music,
@@ -293,14 +292,11 @@ export const TrackItem: React.FC<TrackItemProps> = ({ track, isSnapping = true }
       }
     }
 
-    // 2. Check for Clip Preset dropped from Sidebar (Text, Subtitle, Audio SFX)
+    // 2. Check for Clip Preset dropped from Sidebar (Text, Subtitle)
     const clipJson = e.dataTransfer.getData('application/altra-clip');
     if (clipJson) {
       try {
         const clipData: Partial<Clip> = JSON.parse(clipJson);
-        if (clipData.type === 'audio' && !clipData.src) {
-          clipData.src = await generateSynthwaveAudioWavUrl(15);
-        }
         addClip(track.id, clipData, dropMs);
         return;
       } catch (err) {

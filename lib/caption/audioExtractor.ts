@@ -56,9 +56,9 @@ export async function extractAudioFromTimeline(
   const targetSampleRate = 16000; // Standard 16kHz for Whisper
   const totalSamples = Math.ceil(durationSec * targetSampleRate);
 
-  // If no real media files on timeline, generate speech demo audio
+  // If no real media files on timeline, notify user
   if (eligibleClips.length === 0) {
-    return generateDemoSpeechAudio(Math.max(6, Math.min(15, durationSec)));
+    throw new Error('No audio or video clips found on the timeline. Please add a video or audio clip to the timeline first.');
   }
 
   const decodeCtx = new AudioCtx();
@@ -136,35 +136,4 @@ function normalizeAudio(samples: Float32Array): Float32Array {
     output[i] = Math.max(-1.0, Math.min(1.0, samples[i] * multiplier));
   }
   return output;
-}
-
-/**
- * Generates synthetic speech audio samples (16kHz mono) for instant 1-click testing
- */
-export function generateDemoSpeechAudio(durationSec: number = 8): {
-  audioData: Float32Array;
-  sampleRate: number;
-  durationSec: number;
-} {
-  const sampleRate = 16000;
-  const numSamples = Math.floor(sampleRate * durationSec);
-  const audioData = new Float32Array(numSamples);
-
-  // Synthesize formant voice carrier frequencies mimicking human speech cadence
-  for (let i = 0; i < numSamples; i++) {
-    const t = i / sampleRate;
-    // Rhythmic speech syllables modulation (~3-4 syllables per second)
-    const envelope = Math.max(0, Math.sin(t * Math.PI * 3.5));
-    const f0 = 130 + Math.sin(t * 5) * 20; // Pitch intonation
-    const formant1 = Math.sin(2 * Math.PI * f0 * t) * 0.5;
-    const formant2 = Math.sin(2 * Math.PI * (f0 * 2.8) * t) * 0.3;
-    const formant3 = Math.sin(2 * Math.PI * (f0 * 4.6) * t) * 0.2;
-    audioData[i] = (formant1 + formant2 + formant3) * envelope * 0.6;
-  }
-
-  return {
-    audioData,
-    sampleRate,
-    durationSec,
-  };
 }

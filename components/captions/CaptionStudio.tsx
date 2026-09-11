@@ -299,7 +299,7 @@ export const CaptionStudio: React.FC = () => {
         <div className="flex flex-col gap-2">
           <button
             type="button"
-            onClick={() => handleGenerateCaptions(false)}
+            onClick={() => handleGenerateCaptions()}
             className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-amber-500/25 transition active:scale-[0.98]"
           >
             <Sparkles className="w-4 h-4 text-slate-950" />
