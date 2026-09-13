@@ -64,6 +64,8 @@ export const TrackItem: React.FC<TrackItemProps> = ({ track, isSnapping = true }
     clip: Clip,
     type: 'move' | 'trim-left' | 'trim-right'
   ) => {
+    // Only respond to primary (left) mouse button
+    if (e.button !== 0) return;
     e.stopPropagation();
     // Critical: prevent browser native text/image drag-selection from hijacking mouse tracking
     e.preventDefault();
