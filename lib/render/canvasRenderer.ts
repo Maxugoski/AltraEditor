@@ -50,6 +50,9 @@ export class CanvasRenderer {
       video.src = src;
       video.preload = 'auto';
       video.playsInline = true;
+      // Ensure video can autoplay without user interaction
+      video.muted = true;
+      video.autoplay = true;
       this.mediaPool.set(src, video);
       return video;
     } else if (type === 'image') {
@@ -257,6 +260,11 @@ export class CanvasRenderer {
     }
 
     const media = this.getMediaElement(clip.src, clip.type);
+    // Ensure video metadata is loaded before drawing to avoid blank frames
+    if (media instanceof HTMLVideoElement && media.readyState < 2) {
+      // Not enough data loaded yet; skip drawing for this frame
+      return;
+    }
 
     if (media) {
       const sourceWidth = media instanceof HTMLVideoElement ? (media.videoWidth || width) : (media.naturalWidth || width);
