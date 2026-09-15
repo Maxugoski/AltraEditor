@@ -377,36 +377,42 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
 
   moveClip: (clipId, targetTrackId, newStartMs, saveUndo = false) => {
     const { tracks, saveHistory } = get();
-    let movingClip: Clip | null = null;
-
-    // Find and remove clip from source track
-    const tracksWithoutClip = tracks.map((track) => {
-      const found = track.clips.find((c) => c.id === clipId);
+    let movingClip = null;
+    const tracksWithoutClip = tracks.map(track => {
+      const found = track.clips.find(c => c.id === clipId);
       if (found) {
         movingClip = { ...found, trackId: targetTrackId, startMs: Math.max(0, newStartMs) };
-        return {
-          ...track,
-          clips: track.clips.filter((c) => c.id !== clipId),
-        };
+        // Same-track move: just update start time
+        if (track.id === targetTrackId) {
+          return {
+            ...track,
+            clips: track.clips.map(c => (c.id === clipId ? movingClip : c)),
+          };
+        }
+        // Remove from source track
+        return { ...track, clips: track.clips.filter(c => c.id !== clipId) };
       }
       return track;
     });
 
     if (!movingClip) return;
 
-    // Add clip to target track
-    const finalTracks = tracksWithoutClip.map((track) => {
-      if (track.id === targetTrackId && movingClip) {
-        return {
-          ...track,
-          clips: [...track.clips, movingClip],
-        };
+    // Add to target track if different
+    const finalTracks = tracksWithoutClip.map(track => {
+      if (track.id === targetTrackId && !track.clips.find(c => c.id === movingClip.id)) {
+        return { ...track, clips: [...track.clips, movingClip] };
       }
       return track;
     });
 
-    const newDuration = calculateProjectDuration(finalTracks);
-    set({ tracks: finalTracks, durationMs: newDuration });
+    // Sort clips by startMs for proper rendering
+    const sortedTracks = finalTracks.map(t => ({
+      ...t,
+      clips: t.clips.slice().sort((a, b) => a.startMs - b.startMs),
+    }));
+
+    const newDuration = calculateProjectDuration(sortedTracks);
+    set({ tracks: sortedTracks, durationMs: newDuration });
     if (saveUndo) {
       saveHistory();
     }

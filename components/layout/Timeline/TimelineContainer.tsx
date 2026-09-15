@@ -193,6 +193,12 @@ export const TimelineContainer: React.FC = () => {
 
   const handleContainerDrop = async (e: React.DragEvent) => {
     e.preventDefault();
+    e.stopPropagation();
+    // If the drop originated on a track lane, let the lane's own handler process it
+    const targetTrackElem = (e.target as HTMLElement)?.closest('[data-track-id]');
+    if (targetTrackElem) {
+      return;
+    }
     if (!scrollContainerRef.current) return;
 
     const rect = scrollContainerRef.current.getBoundingClientRect();

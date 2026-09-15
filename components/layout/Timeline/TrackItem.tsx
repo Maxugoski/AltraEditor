@@ -306,59 +306,11 @@ export const TrackItem: React.FC<TrackItemProps> = ({ track, isSnapping = true }
       }
     }
 
-    // 3. Check for external media files dropped directly from Windows Explorer / Desktop
+    // 3. External media files dropped directly from Windows Explorer / Desktop
+    // Handled by the container drop handler; skip here to prevent duplicate imports
     const files = e.dataTransfer.files;
     if (files && files.length > 0) {
-      let currentDropMs = dropMs;
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        try {
-          const asset = await inspectMediaFile(file);
-          addMediaAsset(asset);
-          addClip(
-            track.id,
-            {
-              name: asset.name,
-              type: asset.type,
-              src: asset.src,
-              durationMs: asset.durationMs || 5000,
-              sourceDurationMs: asset.durationMs || 5000,
-              thumbnail: asset.thumbnailUrl,
-              waveform: asset.waveform,
-            },
-            currentDropMs
-          );
-          currentDropMs += asset.durationMs || 5000;
-        } catch (err) {
-          console.warn('Fallback importing dropped file:', err);
-          const fallbackType = file.type.startsWith('audio')
-            ? 'audio'
-            : file.type.startsWith('image')
-            ? 'image'
-            : 'video';
-          const fallbackAsset: MediaAsset = {
-            id: `asset_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-            name: file.name,
-            type: fallbackType,
-            src: URL.createObjectURL(file),
-            durationMs: 5000,
-            sizeBytes: file.size,
-          };
-          addMediaAsset(fallbackAsset);
-          addClip(
-            track.id,
-            {
-              name: fallbackAsset.name,
-              type: fallbackAsset.type,
-              src: fallbackAsset.src,
-              durationMs: 5000,
-              sourceDurationMs: 5000,
-            },
-            currentDropMs
-          );
-          currentDropMs += 5000;
-        }
-      }
+      return;
     }
   };
 
