@@ -132,8 +132,39 @@ interface EditorStore extends ProjectState {
   loadSampleProject: () => void;
 }
 
-// No pre-defined tracks — tracks are created dynamically when content is added
-const INITIAL_TRACKS: Track[] = [];
+// Standard professional timeline tracks available on project start
+const INITIAL_TRACKS: Track[] = [
+  {
+    id: 'track-v1',
+    name: 'Video Track 1',
+    type: 'video',
+    clips: [],
+    muted: false,
+    locked: false,
+    visible: true,
+    volume: 1,
+  },
+  {
+    id: 'track-t1',
+    name: 'Titles & Captions',
+    type: 'text',
+    clips: [],
+    muted: false,
+    locked: false,
+    visible: true,
+    volume: 1,
+  },
+  {
+    id: 'track-a1',
+    name: 'Audio Track 1',
+    type: 'audio',
+    clips: [],
+    muted: false,
+    locked: false,
+    visible: true,
+    volume: 1,
+  },
+];
 
 function calculateProjectDuration(tracks: Track[]): number {
   let maxDuration = 10000; // minimum 10 seconds
@@ -150,7 +181,7 @@ function calculateProjectDuration(tracks: Track[]): number {
 
 export const useEditorStore = create<EditorStore>((set, get) => ({
   id: 'project-1',
-  title: 'Altra Cinematic Project',
+  title: 'Altra Studio Project',
   aspectRatio: '16:9',
   canvasWidth: 1920,
   canvasHeight: 1080,
@@ -281,8 +312,35 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
       thumbnail: clipData.thumbnail,
     };
 
-    const newTracks = tracks.map((track) => {
-      if (track.id === trackId) {
+    let targetTrack = tracks.find((t) => t.id === trackId);
+    let workingTracks = [...tracks];
+
+    // Auto-locate or auto-create a matching track if specified track does not exist
+    if (!targetTrack) {
+      const matchType = newClip.type === 'subtitle' ? 'text' : newClip.type;
+      targetTrack = workingTracks.find((t) => t.type === matchType);
+    }
+
+    if (!targetTrack) {
+      const trackType = newClip.type === 'subtitle' ? 'text' : (newClip.type === 'audio' ? 'audio' : 'video');
+      const trackName = trackType === 'text' ? 'Titles & Captions' : trackType === 'audio' ? 'Audio Track' : 'Video Track';
+      targetTrack = {
+        id: `track-${trackType}-${Date.now()}`,
+        name: trackName,
+        type: trackType,
+        clips: [],
+        muted: false,
+        locked: false,
+        visible: true,
+        volume: 1,
+      };
+      workingTracks.push(targetTrack);
+    }
+
+    newClip.trackId = targetTrack.id;
+
+    const newTracks = workingTracks.map((track) => {
+      if (track.id === targetTrack!.id) {
         return {
           ...track,
           clips: [...track.clips, newClip],
@@ -377,7 +435,7 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
 
   moveClip: (clipId, targetTrackId, newStartMs, saveUndo = false) => {
     const { tracks, saveHistory } = get();
-    let movingClip = null;
+    let movingClip: Clip | null = null;
     const tracksWithoutClip = tracks.map(track => {
       const found = track.clips.find(c => c.id === clipId);
       if (found) {
@@ -386,7 +444,7 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
         if (track.id === targetTrackId) {
           return {
             ...track,
-            clips: track.clips.map(c => (c.id === clipId ? movingClip : c)),
+            clips: track.clips.map(c => (c.id === clipId ? movingClip! : c)),
           };
         }
         // Remove from source track
@@ -396,11 +454,12 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
     });
 
     if (!movingClip) return;
+    const resolvedClip: Clip = movingClip;
 
     // Add to target track if different
     const finalTracks = tracksWithoutClip.map(track => {
-      if (track.id === targetTrackId && !track.clips.find(c => c.id === movingClip.id)) {
-        return { ...track, clips: [...track.clips, movingClip] };
+      if (track.id === targetTrackId && !track.clips.find(c => c.id === resolvedClip.id)) {
+        return { ...track, clips: [...track.clips, resolvedClip] };
       }
       return track;
     });
@@ -740,14 +799,207 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
     }),
 
   loadSampleProject: () => {
+    const demoVideoClips: Clip[] = [
+      {
+        id: 'demo-clip-1',
+        trackId: 'track-v1',
+        name: 'Retro Synthwave (A-Roll)',
+        type: 'video',
+        src: 'synth-pattern-1',
+        startMs: 0,
+        durationMs: 7000,
+        sourceStartMs: 0,
+        sourceDurationMs: 7000,
+        volume: 1,
+        playbackRate: 1,
+        muted: false,
+        transform: { ...DEFAULT_TRANSFORM },
+        chromaKey: { ...DEFAULT_CHROMA_KEY },
+        filters: { ...DEFAULT_FILTERS },
+      },
+      {
+        id: 'demo-clip-2',
+        trackId: 'track-v1',
+        name: 'Cyber City (B-Roll)',
+        type: 'video',
+        src: 'synth-pattern-2',
+        startMs: 7000,
+        durationMs: 9000,
+        sourceStartMs: 0,
+        sourceDurationMs: 9000,
+        volume: 1,
+        playbackRate: 1,
+        muted: false,
+        transform: { ...DEFAULT_TRANSFORM },
+        chromaKey: { ...DEFAULT_CHROMA_KEY },
+        filters: { ...DEFAULT_FILTERS, contrast: 110 },
+      },
+    ];
+
+    const demoTextClips: Clip[] = [
+      {
+        id: 'demo-title-1',
+        trackId: 'track-t1',
+        name: 'Altra Intro Badge',
+        type: 'text',
+        src: '',
+        textContent: 'ALTRA STUDIO PRO',
+        startMs: 400,
+        durationMs: 3800,
+        sourceStartMs: 0,
+        sourceDurationMs: 3800,
+        volume: 1,
+        playbackRate: 1,
+        muted: false,
+        transform: { ...DEFAULT_TRANSFORM, y: -160 },
+        chromaKey: { ...DEFAULT_CHROMA_KEY },
+        filters: { ...DEFAULT_FILTERS },
+        textStyle: {
+          fontFamily: 'Inter, sans-serif',
+          fontSize: 58,
+          fontWeight: '900',
+          color: '#00F2FE',
+          textAlign: 'center',
+          outlineColor: '#0369a1',
+          outlineWidth: 4,
+          shadowColor: '#00F2FE',
+          shadowBlur: 24,
+        },
+      },
+      {
+        id: 'demo-caption-1',
+        trackId: 'track-t1',
+        name: 'AI Karaoke Captions',
+        type: 'subtitle',
+        src: '',
+        textContent: 'Create stunning client-side videos',
+        startMs: 4400,
+        durationMs: 11600,
+        sourceStartMs: 0,
+        sourceDurationMs: 11600,
+        volume: 1,
+        playbackRate: 1,
+        muted: false,
+        transform: { ...DEFAULT_TRANSFORM, y: 220 },
+        chromaKey: { ...DEFAULT_CHROMA_KEY },
+        filters: { ...DEFAULT_FILTERS },
+        textStyle: {
+          fontFamily: 'Inter, sans-serif',
+          fontSize: 44,
+          fontWeight: '800',
+          color: '#FACC15',
+          textAlign: 'center',
+          outlineColor: '#000000',
+          outlineWidth: 5,
+          shadowColor: 'rgba(0,0,0,0.9)',
+          shadowBlur: 12,
+        },
+        subtitleCues: [
+          {
+            id: 'demo-cue-1',
+            startMs: 0,
+            endMs: 3200,
+            text: 'Create stunning client-side videos',
+            words: [
+              { id: 'w1', text: 'Create', startMs: 0, endMs: 700 },
+              { id: 'w2', text: 'stunning', startMs: 700, endMs: 1500 },
+              { id: 'w3', text: 'client-side', startMs: 1500, endMs: 2300 },
+              { id: 'w4', text: 'videos', startMs: 2300, endMs: 3200 },
+            ],
+          },
+          {
+            id: 'demo-cue-2',
+            startMs: 3400,
+            endMs: 7200,
+            text: 'Powered by WebAssembly & Whisper AI',
+            words: [
+              { id: 'w5', text: 'Powered', startMs: 3400, endMs: 4100 },
+              { id: 'w6', text: 'by', startMs: 4100, endMs: 4500 },
+              { id: 'w7', text: 'WebAssembly', startMs: 4500, endMs: 5600 },
+              { id: 'w8', text: '&', startMs: 5600, endMs: 5900 },
+              { id: 'w9', text: 'Whisper', startMs: 5900, endMs: 6500 },
+              { id: 'w10', text: 'AI', startMs: 6500, endMs: 7200 },
+            ],
+          },
+          {
+            id: 'demo-cue-3',
+            startMs: 7400,
+            endMs: 11600,
+            text: 'Zero server fees with instant 4K export',
+            words: [
+              { id: 'w11', text: 'Zero', startMs: 7400, endMs: 8000 },
+              { id: 'w12', text: 'server', startMs: 8000, endMs: 8600 },
+              { id: 'w13', text: 'fees', startMs: 8600, endMs: 9200 },
+              { id: 'w14', text: 'with', startMs: 9200, endMs: 9700 },
+              { id: 'w15', text: 'instant', startMs: 9700, endMs: 10400 },
+              { id: 'w16', text: '4K', startMs: 10400, endMs: 11000 },
+              { id: 'w17', text: 'export', startMs: 11000, endMs: 11600 },
+            ],
+          },
+        ],
+      },
+    ];
+
+    const demoAudioClips: Clip[] = [
+      {
+        id: 'demo-audio-1',
+        trackId: 'track-a1',
+        name: 'Cyberwave Synth Soundtrack',
+        type: 'audio',
+        src: '',
+        startMs: 0,
+        durationMs: 16000,
+        sourceStartMs: 0,
+        sourceDurationMs: 16000,
+        volume: 0.8,
+        playbackRate: 1,
+        muted: false,
+        transform: { ...DEFAULT_TRANSFORM },
+        chromaKey: { ...DEFAULT_CHROMA_KEY },
+        filters: { ...DEFAULT_FILTERS },
+      },
+    ];
+
+    const sampleTracks: Track[] = [
+      {
+        id: 'track-v1',
+        name: 'Main Video (V1)',
+        type: 'video',
+        clips: demoVideoClips,
+        muted: false,
+        locked: false,
+        visible: true,
+        volume: 1,
+      },
+      {
+        id: 'track-t1',
+        name: 'Titles & Captions (T1)',
+        type: 'text',
+        clips: demoTextClips,
+        muted: false,
+        locked: false,
+        visible: true,
+        volume: 1,
+      },
+      {
+        id: 'track-a1',
+        name: 'Music & Audio (A1)',
+        type: 'audio',
+        clips: demoAudioClips,
+        muted: false,
+        locked: false,
+        visible: true,
+        volume: 0.8,
+      },
+    ];
+
     set({
-      tracks: [],
-      durationMs: 30000,
+      tracks: sampleTracks,
+      durationMs: 18000,
       playheadMs: 0,
-      selectedClipId: null,
-      selectedTrackId: null,
-      mediaAssets: [],
-      history: [{ tracks: [], durationMs: 30000 }],
+      selectedClipId: 'demo-clip-1',
+      selectedTrackId: 'track-v1',
+      history: [{ tracks: sampleTracks, durationMs: 18000 }],
       historyIndex: 0,
     });
   },

@@ -381,6 +381,15 @@ export const TrackItem: React.FC<TrackItemProps> = ({ track, isSnapping = true }
         </div>
       )}
 
+      {/* Empty lane hint */}
+      {track.clips.length === 0 && !isDragOver && (
+        <div className="absolute inset-0 flex items-center justify-start pl-6 pointer-events-none opacity-20">
+          <span className="text-[11px] font-mono tracking-wider text-slate-400 uppercase">
+            {track.name} · drag media or title presets here
+          </span>
+        </div>
+      )}
+
       {/* Render existing Track Clips */}
       {track.clips.map((clip) => {
         const leftPx = msToPx(clip.startMs, zoom);

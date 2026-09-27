@@ -121,7 +121,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose }) => 
         {/* Modal Header */}
         <div className="px-6 py-4 border-b border-editor-border flex items-center justify-between bg-editor-bg">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg bg-cyan-500/20 text-cyan-400 flex items-center justify-center border border-cyan-500/30">
               <Film className="w-4 h-4" />
             </div>
             <div>
@@ -150,7 +150,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose }) => 
                   onClick={() => setFormat('mp4')}
                   className={`py-2 px-3 rounded-lg border text-center font-medium transition ${
                     format === 'mp4'
-                      ? 'bg-indigo-600/20 border-indigo-500 text-indigo-300'
+                      ? 'bg-cyan-500/20 border-cyan-400 text-cyan-300'
                       : 'bg-editor-surface2 border-editor-border text-slate-400 hover:text-white'
                   }`}
                 >
@@ -161,7 +161,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose }) => 
                   onClick={() => setFormat('webm')}
                   className={`py-2 px-3 rounded-lg border text-center font-medium transition ${
                     format === 'webm'
-                      ? 'bg-indigo-600/20 border-indigo-500 text-indigo-300'
+                      ? 'bg-cyan-500/20 border-cyan-400 text-cyan-300'
                       : 'bg-editor-surface2 border-editor-border text-slate-400 hover:text-white'
                   }`}
                 >
@@ -194,7 +194,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose }) => 
                   onClick={() => setFps(30)}
                   className={`py-2 px-3 rounded-lg border text-center font-medium transition ${
                     fps === 30
-                      ? 'bg-indigo-600/20 border-indigo-500 text-indigo-300'
+                      ? 'bg-cyan-500/20 border-cyan-400 text-cyan-300'
                       : 'bg-editor-surface2 border-editor-border text-slate-400 hover:text-white'
                   }`}
                 >
@@ -205,7 +205,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose }) => 
                   onClick={() => setFps(60)}
                   className={`py-2 px-3 rounded-lg border text-center font-medium transition ${
                     fps === 60
-                      ? 'bg-indigo-600/20 border-indigo-500 text-indigo-300'
+                      ? 'bg-cyan-500/20 border-cyan-400 text-cyan-300'
                       : 'bg-editor-surface2 border-editor-border text-slate-400 hover:text-white'
                   }`}
                 >
@@ -230,17 +230,17 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose }) => 
 
           {/* Progress / Status Area */}
           {isExporting && (
-            <div className="p-4 rounded-xl bg-indigo-950/40 border border-indigo-500/30 space-y-2">
+            <div className="p-4 rounded-xl bg-cyan-950/40 border border-cyan-500/30 space-y-2">
               <div className="flex items-center justify-between text-xs">
-                <span className="text-indigo-300 flex items-center gap-2">
-                  <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-400" />
+                <span className="text-cyan-300 flex items-center gap-2">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-cyan-400" />
                   {exportStatusMessage || 'Rendering video frames...'}
                 </span>
                 <span className="font-bold text-white">{exportProgress}%</span>
               </div>
               <div className="h-2 w-full bg-slate-800 rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 transition-all duration-300"
+                  className="h-full bg-gradient-to-r from-cyan-400 via-teal-400 to-emerald-400 transition-all duration-300"
                   style={{ width: `${exportProgress}%` }}
                 />
               </div>
@@ -265,7 +265,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose }) => 
 
               <button
                 onClick={handleDownloadFile}
-                className="w-full py-2.5 px-4 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/30 transition"
+                className="w-full py-2.5 px-4 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-500 hover:brightness-110 text-slate-950 font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/30 transition"
               >
                 <Download className="w-4 h-4" />
                 <span>Download {format.toUpperCase()} Video</span>
@@ -287,7 +287,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose }) => 
             <button
               onClick={handleStartExport}
               disabled={isExporting}
-              className="px-5 py-2 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-semibold text-xs flex items-center gap-2 shadow-lg shadow-indigo-600/30 transition disabled:opacity-50"
+              className="px-5 py-2 rounded-full bg-gradient-to-r from-cyan-400 via-teal-400 to-emerald-400 hover:brightness-110 text-slate-950 font-bold text-xs flex items-center gap-2 shadow-[0_0_16px_rgba(0,242,254,0.35)] transition transform active:scale-95 disabled:opacity-50"
             >
               {isExporting ? (
                 <>

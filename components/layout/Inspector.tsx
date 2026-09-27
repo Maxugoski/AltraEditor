@@ -714,7 +714,7 @@ export const Inspector: React.FC = () => {
           <div className="space-y-3 animate-fade-in">
             <div className="flex items-center justify-between">
               <span className="font-bold text-amber-300 uppercase text-[10px] tracking-wider flex items-center gap-1.5">
-                <Flame className="w-3.5 h-3.5 text-amber-400" /> CapCut Viral Templates
+                <Flame className="w-3.5 h-3.5 text-amber-400" /> AI Dynamic Templates
               </span>
               <span className="text-[10px] text-slate-400 font-mono">
                 {textStyle?.captionTemplate || 'karaoke'}

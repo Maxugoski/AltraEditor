@@ -55,10 +55,7 @@ export const TimelineContainer: React.FC = () => {
   const rangeAnchorMs = useRef<number | null>(null);
 
   const timelineWidthPx = Math.max(1200, msToPx(durationMs, zoom) + 400);
-
-  // Only show lanes for tracks that have clips (keeps timeline clean)
-  const populatedTracks = tracks.filter((t) => t.clips.length > 0);
-  const hasContent = populatedTracks.length > 0;
+  const totalClips = tracks.reduce((sum, t) => sum + t.clips.length, 0);
 
   // Playhead scrubbing interaction on Ruler / Canvas
   const handleRulerMouseDown = (e: React.MouseEvent) => {
@@ -616,7 +613,7 @@ export const TimelineContainer: React.FC = () => {
               style={{ left: `${playheadLeftPx}px` }}
               className="absolute top-0 bottom-0 z-30 pointer-events-none -translate-x-1/2"
             >
-              {/* Playhead Top Pin & Grab Handle */}
+              {/* Playhead Diamond Pin & Grab Handle */}
               <div
                 onMouseDown={(e) => {
                   e.stopPropagation();
@@ -624,19 +621,17 @@ export const TimelineContainer: React.FC = () => {
                   setIsScrubbing(true);
                   updatePlayheadFromEvent(e);
                 }}
-                className="w-8 h-8 pointer-events-auto cursor-ew-resize flex flex-col items-center group relative -top-0 hover:scale-110 active:scale-95 transition-transform"
+                className="w-7 h-7 pointer-events-auto cursor-ew-resize flex flex-col items-center group relative -top-0 hover:scale-105 active:scale-95 transition-transform"
                 title={`Playhead: ${formatTimecode(playheadMs, fps)} (Click & drag anywhere to scrub)`}
               >
-                {/* Modern CapCut-style Red Marker Badge */}
-                <div className="w-5 h-4 bg-red-500 group-hover:bg-red-400 rounded-t-sm shadow-lg shadow-red-500/50 flex items-center justify-center transition-colors">
+                {/* Modern Precision Diamond Needle */}
+                <div className="w-4 h-4 bg-gradient-to-b from-rose-500 to-red-600 rounded-sm rotate-45 shadow-[0_0_12px_rgba(244,63,94,0.7)] flex items-center justify-center border border-white/60">
                   <div className="w-1.5 h-1.5 bg-white rounded-full shadow" />
                 </div>
-                {/* Downward pointing triangle pointer */}
-                <div className="w-0 h-0 border-l-[10px] border-l-transparent border-r-[10px] border-r-transparent border-t-[8px] border-t-red-500 group-hover:border-t-red-400 transition-colors" />
 
                 {/* Floating Timecode Badge while scrubbing or hovering */}
                 <div
-                  className={`absolute -top-7 px-2 py-0.5 rounded bg-red-600 text-white font-mono text-[10px] font-bold shadow-xl border border-red-400/30 whitespace-nowrap transition-opacity ${
+                  className={`absolute -top-7 px-2 py-0.5 rounded-md bg-slate-950/95 text-rose-400 font-mono text-[10px] font-bold shadow-2xl border border-rose-500/40 whitespace-nowrap transition-opacity ${
                     isScrubbing ? 'opacity-100 scale-100' : 'opacity-0 group-hover:opacity-100 scale-95 pointer-events-none'
                   }`}
                 >
@@ -652,38 +647,25 @@ export const TimelineContainer: React.FC = () => {
                   setIsScrubbing(true);
                   updatePlayheadFromEvent(e);
                 }}
-                className="w-5 h-full pointer-events-auto cursor-ew-resize flex justify-center group/line -mt-1"
+                className="w-4 h-full pointer-events-auto cursor-ew-resize flex justify-center group/line -mt-1"
               >
-                <div className="w-0.5 h-full bg-red-500 group-hover/line:w-1 group-hover/line:bg-red-400 shadow-[0_0_10px_rgba(239,68,68,0.9)] transition-all" />
+                <div className="w-[1.5px] h-full bg-rose-500 group-hover/line:w-[2.5px] group-hover/line:bg-rose-400 shadow-[0_0_8px_rgba(244,63,94,0.8)] transition-all" />
               </div>
             </div>
 
-            {/* TRACK LANES — only render populated tracks */}
-            <div className="flex flex-col flex-1">
-              {!hasContent ? (
-                /* Empty timeline drop zone */
-                <div
-                  onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; }}
-                  onDrop={handleContainerDrop}
-                  className="flex flex-col items-center justify-center flex-1 min-h-[80px] gap-3 border-2 border-dashed border-editor-border/40 rounded-xl mx-4 my-3 hover:border-cyan-500/50 hover:bg-cyan-500/5 transition-all group cursor-default"
-                >
-                  <div className="flex flex-col items-center gap-1.5 opacity-50 group-hover:opacity-80 transition-opacity">
-                    <div className="w-10 h-10 rounded-full bg-editor-surface2 flex items-center justify-center">
-                      <Film className="w-5 h-5 text-cyan-400" />
-                    </div>
-                    <p className="text-xs font-semibold text-slate-400 group-hover:text-slate-300 transition-colors">
-                      Drop media here to start editing
-                    </p>
-                    <p className="text-[10px] text-slate-600">
-                      Video · Audio · Images · Text
-                    </p>
+            {/* TRACK LANES */}
+            <div className="flex flex-col flex-1 relative">
+              {totalClips === 0 && (
+                <div className="absolute top-2 left-6 z-10 pointer-events-none">
+                  <div className="px-3 py-1.5 rounded-lg bg-cyan-950/80 border border-cyan-500/30 text-cyan-200 text-xs flex items-center gap-2 backdrop-blur-md shadow-lg">
+                    <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+                    <span>Drop video, audio or titles onto tracks, or click <strong>Load Demo</strong> above to preview.</span>
                   </div>
                 </div>
-              ) : (
-                populatedTracks.map((track) => (
-                  <TrackItem key={track.id} track={track} isSnapping={isSnapping} />
-                ))
               )}
+              {tracks.map((track) => (
+                <TrackItem key={track.id} track={track} isSnapping={isSnapping} />
+              ))}
             </div>
           </div>
         </div>

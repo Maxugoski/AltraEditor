@@ -170,11 +170,139 @@ export const Sidebar: React.FC = () => {
     },
   ];
 
+  const stockVideos = [
+    {
+      id: 'stock-synth-1',
+      name: 'Retro Synthwave Grid',
+      desc: '3D animated horizon & neon sun',
+      pattern: 'synth-pattern-1',
+      durationMs: 7000,
+      gradient: 'from-fuchsia-950 via-purple-900 to-indigo-950',
+      badge: 'SYNTH 60FPS',
+    },
+    {
+      id: 'stock-synth-2',
+      name: 'Cyber City Skyline',
+      desc: 'Illuminated skyscraper skyline',
+      pattern: 'synth-pattern-2',
+      durationMs: 9000,
+      gradient: 'from-blue-950 via-slate-900 to-cyan-950',
+      badge: 'CYBER 60FPS',
+    },
+  ];
+
+  const handleAddStockVideo = (stock: typeof stockVideos[0]) => {
+    let videoTrack = tracks.find((t) => t.type === 'video');
+    const targetTrackId = videoTrack ? videoTrack.id : 'track-video-default';
+    addClip(targetTrackId, {
+      name: stock.name,
+      type: 'video',
+      src: stock.pattern,
+      durationMs: stock.durationMs,
+      sourceStartMs: 0,
+      sourceDurationMs: stock.durationMs,
+    });
+  };
+
+  const stockAudioTracks = [
+    {
+      id: 'sfx-whoosh',
+      name: 'Cinematic Whoosh Transition',
+      category: 'Transition SFX',
+      durationMs: 1500,
+      soundType: 'whoosh',
+    },
+    {
+      id: 'sfx-bass',
+      name: 'Deep Bass Sub Drop',
+      category: 'Impact SFX',
+      durationMs: 2500,
+      soundType: 'bass',
+    },
+    {
+      id: 'sfx-pop',
+      name: 'Dynamic Click / Pop',
+      category: 'UI SFX',
+      durationMs: 600,
+      soundType: 'pop',
+    },
+    {
+      id: 'sfx-synth',
+      name: 'Cyberwave Synth Loop',
+      category: 'Music Loop',
+      durationMs: 16000,
+      soundType: 'synth',
+    },
+  ];
+
+  const playSfxPreview = (soundType: string) => {
+    try {
+      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      if (soundType === 'whoosh') {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(180, now);
+        osc.frequency.exponentialRampToValueAtTime(750, now + 0.25);
+        osc.frequency.exponentialRampToValueAtTime(80, now + 0.6);
+        gain.gain.setValueAtTime(0.35, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.6);
+        osc.start(now);
+        osc.stop(now + 0.6);
+      } else if (soundType === 'bass') {
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(160, now);
+        osc.frequency.exponentialRampToValueAtTime(35, now + 1.2);
+        gain.gain.setValueAtTime(0.5, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 1.2);
+        osc.start(now);
+        osc.stop(now + 1.2);
+      } else if (soundType === 'pop') {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(850, now);
+        osc.frequency.exponentialRampToValueAtTime(180, now + 0.12);
+        gain.gain.setValueAtTime(0.4, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.12);
+        osc.start(now);
+        osc.stop(now + 0.12);
+      } else {
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(220, now);
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 1.2);
+        osc.start(now);
+        osc.stop(now + 1.2);
+      }
+    } catch (e) {
+      console.warn('Audio preview error', e);
+    }
+  };
+
+  const handleAddStockAudio = (trackItem: typeof stockAudioTracks[0]) => {
+    let audioTrack = tracks.find((t) => t.type === 'audio');
+    const targetTrackId = audioTrack ? audioTrack.id : 'track-audio-default';
+    addClip(targetTrackId, {
+      name: trackItem.name,
+      type: 'audio',
+      src: '',
+      durationMs: trackItem.durationMs,
+      sourceStartMs: 0,
+      sourceDurationMs: trackItem.durationMs,
+      volume: 0.8,
+    });
+  };
+
   const handleAddTextPreset = (preset: typeof textPresets[0]) => {
     let textTrack = tracks.find((t) => t.type === 'text');
-    if (!textTrack) textTrack = tracks[0];
+    const targetTrackId = textTrack ? textTrack.id : 'track-text-default';
 
-    addClip(textTrack.id, {
+    addClip(targetTrackId, {
       name: preset.name,
       type: 'text',
       textContent: preset.text,
@@ -361,7 +489,7 @@ export const Sidebar: React.FC = () => {
             {activeTab === 'ai' && 'AI Creator Suite'}
             {activeTab === 'effects' && 'Color Grading'}
           </span>
-          <span className="text-[9px] text-slate-500 font-mono font-bold">CAPCUT PRO</span>
+          <span className="text-[9px] text-slate-500 font-mono font-bold">ALTRA STUDIO</span>
         </div>
 
         {/* Tab Contents */}
@@ -377,7 +505,7 @@ export const Sidebar: React.FC = () => {
                 e.preventDefault();
                 handleFileUpload(e.dataTransfer.files);
               }}
-              className="border-2 border-dashed border-editor-border hover:border-indigo-500/60 bg-editor-surface2/40 hover:bg-editor-surface2/80 rounded-xl p-5 flex flex-col items-center justify-center cursor-pointer transition text-center group"
+              className="border-2 border-dashed border-editor-border hover:border-cyan-500/60 bg-editor-surface2/40 hover:bg-editor-surface2/80 rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer transition text-center group"
             >
               <input
                 ref={fileInputRef}
@@ -387,15 +515,68 @@ export const Sidebar: React.FC = () => {
                 onChange={(e) => handleFileUpload(e.target.files)}
                 className="hidden"
               />
-              <div className="w-10 h-10 rounded-full bg-indigo-500/10 group-hover:bg-indigo-500/20 text-indigo-400 flex items-center justify-center mb-2 transition">
-                <Upload className="w-5 h-5" />
+              <div className="w-9 h-9 rounded-full bg-cyan-500/15 group-hover:bg-cyan-500/25 text-cyan-400 flex items-center justify-center mb-1.5 transition">
+                <Upload className="w-4 h-4" />
               </div>
               <span className="text-xs font-semibold text-slate-200">
                 {isUploading ? (uploadStatus || 'Importing media...') : 'Upload Video, Audio or Images'}
               </span>
-              <span className="text-[10px] text-slate-400 mt-1">
-                {isUploading ? 'Preparing fast streaming preview...' : 'Supports MP4, MOV, WebM, MP3, WAV, images up to 4GB+'}
+              <span className="text-[10px] text-slate-400 mt-0.5">
+                {isUploading ? 'Preparing fast streaming preview...' : 'Supports MP4, MOV, WebM, MP3, WAV, images'}
               </span>
+            </div>
+
+            {/* Procedural Stock Video Loops */}
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                  Stock Video Loops
+                </span>
+                <span className="text-[10px] text-cyan-400 font-mono font-medium">Ready to Edit</span>
+              </div>
+
+              <div className="grid grid-cols-1 gap-2">
+                {stockVideos.map((stock) => (
+                  <div
+                    key={stock.id}
+                    draggable={true}
+                    onDragStart={(e) => {
+                      const clipData = {
+                        name: stock.name,
+                        type: 'video',
+                        src: stock.pattern,
+                        durationMs: stock.durationMs,
+                        sourceStartMs: 0,
+                        sourceDurationMs: stock.durationMs,
+                      };
+                      e.dataTransfer.setData('application/altra-clip', JSON.stringify(clipData));
+                      e.dataTransfer.effectAllowed = 'copy';
+                    }}
+                    className="p-2.5 rounded-xl bg-editor-surface2 border border-editor-border hover:border-cyan-500/40 flex items-center justify-between gap-2.5 transition group cursor-grab active:cursor-grabbing"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className={`w-12 h-9 rounded-lg bg-gradient-to-br ${stock.gradient} flex items-center justify-center flex-shrink-0 border border-white/10 shadow-sm relative overflow-hidden`}>
+                        <Film className="w-4 h-4 text-cyan-300" />
+                        <span className="absolute bottom-0 right-0 left-0 text-[7px] font-mono text-center bg-black/70 text-cyan-200">
+                          {stock.durationMs / 1000}s
+                        </span>
+                      </div>
+                      <div className="flex flex-col min-w-0">
+                        <span className="text-xs font-semibold text-slate-200 truncate">{stock.name}</span>
+                        <span className="text-[10px] text-slate-400 truncate">{stock.desc}</span>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => handleAddStockVideo(stock)}
+                      className="p-1.5 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 transition flex-shrink-0"
+                      title="Add to Timeline"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
             </div>
 
             {/* Media Assets List */}
@@ -556,6 +737,50 @@ export const Sidebar: React.FC = () => {
               <span className="text-[10px] text-slate-400 mt-1">
                 Supports MP3, WAV, AAC, M4A, OGG, FLAC
               </span>
+            </div>
+
+            {/* Royalty-Free Sound Effects & Music */}
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                  Royalty-Free SFX & Music
+                </span>
+                <span className="text-[10px] text-emerald-400 font-mono font-medium">Instant Synth</span>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                {stockAudioTracks.map((item) => (
+                  <div
+                    key={item.id}
+                    className="p-2.5 rounded-xl bg-editor-surface2 border border-editor-border hover:border-emerald-500/40 flex items-center justify-between gap-3 transition"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <button
+                        onClick={() => playSfxPreview(item.soundType)}
+                        className="w-8 h-8 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30 flex items-center justify-center transition flex-shrink-0"
+                        title="Click to preview audio"
+                      >
+                        <Play className="w-3.5 h-3.5 fill-current ml-0.5" />
+                      </button>
+
+                      <div className="flex flex-col min-w-0">
+                        <span className="text-xs font-semibold text-slate-200 truncate">{item.name}</span>
+                        <span className="text-[10px] text-slate-400">
+                          {item.category} • {(item.durationMs / 1000).toFixed(1)}s
+                        </span>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => handleAddStockAudio(item)}
+                      className="p-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white transition flex-shrink-0"
+                      title="Add to Timeline"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
             </div>
 
             {/* Audio Assets List */}

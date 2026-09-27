@@ -112,34 +112,34 @@ export const CaptionStudio: React.FC = () => {
   return (
     <div className="flex flex-col gap-4 p-3.5 select-none text-slate-200">
       {/* Header Banner */}
-      <div className="p-3 rounded-xl bg-gradient-to-br from-amber-950/40 via-yellow-950/20 to-slate-900 border border-amber-500/30 flex flex-col gap-2 shadow-lg shadow-amber-950/20">
+      <div className="p-3.5 rounded-xl bg-gradient-to-br from-amber-950/40 via-yellow-950/20 to-slate-900 border border-amber-500/30 flex flex-col gap-2 shadow-lg shadow-amber-950/20">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-amber-500 to-yellow-400 text-slate-950 flex items-center justify-center font-bold shadow-md shadow-amber-500/30">
               <Subtitles className="w-4 h-4" />
             </div>
             <div>
               <div className="flex items-center gap-1.5">
-                <span className="text-xs font-bold text-white tracking-wide">CapCut Auto Captions</span>
+                <span className="text-xs font-bold text-white tracking-wide">Altra Auto-Captions</span>
                 <span className="px-1.5 py-0.2 rounded-full bg-amber-400/20 text-amber-300 font-mono text-[9px] font-semibold border border-amber-400/40">
-                  AI
+                  AI Whisper
                 </span>
               </div>
-              <span className="text-[10px] text-amber-200/70">Word-Level Precision & Viral Animations</span>
+              <span className="text-[10px] text-amber-200/70">Word-Level Precision & Dynamic Highlights</span>
             </div>
           </div>
         </div>
         <p className="text-[11px] text-slate-400 leading-relaxed">
-          Transforms speech into synchronized karaoke captions with dynamic word bounce, thick strokes, and animated highlights.
+          Transforms speech into synchronized karaoke captions with animated word bounce, thick strokes, and vibrant color palettes.
         </p>
       </div>
 
-      {/* CapCut Templates Gallery */}
+      {/* Caption Templates Gallery */}
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
           <span className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
             <Flame className="w-3.5 h-3.5 text-amber-400" />
-            <span>CapCut Animation Templates</span>
+            <span>AI Dynamic Templates</span>
           </span>
           <span className="text-[10px] text-slate-400 font-mono">{TEMPLATE_LIST.length} Styles</span>
         </div>
