@@ -1,19 +1,19 @@
-# 🎬 AltraStudio — Client-Side AI Video Editor
+# 🎬 AltraStudio — Client-Side Video Editor (Open-Source CapCut Alternative)
 
-A 100% client-side, zero-cost video editing suite built with **Next.js 14**, **TypeScript**, **Tailwind CSS**, **WebGL / Canvas 2D**, **Zustand**, **FFmpeg WASM**, and on-device **Whisper AI**.
+A modern, high-performance, 100% client-side video editor powered by **Next.js 16**, **React 19**, **OpenCut Engine**, **WebGL / WebGPU**, **Tailwind CSS**, and **WebAssembly**.
 
 ---
 
 ## ✨ Features
 
-- 🎞️ **Multi-Track Timeline**: Unlimited layered tracks (Video, Audio, Titles, VFX Overlays) with split (`S`), trim, duplicate, and drag-and-drop.
-- ⚡ **Real-Time WebGL/Canvas Preview**: 60 FPS playback loop with live on-canvas drag repositioning, scaling, rotation, and opacity control.
-- 🤖 **On-Device AI Auto-Captions**: Zero-cost, 100% client-side speech recognition powered by `@xenova/transformers` (Whisper model).
-- 🪄 **Real-Time Chroma Key & Background Cutout**: Green & blue screen keying shader with tolerance thresholding, edge smoothness, and color spill reduction.
-- 🎨 **Cinematic Color Grading**: Real-time filters (Teal & Orange, Cyberpunk, Noir, Vintage 70s, Warmth).
-- 📦 **WASM & MediaRecorder Video Export**: Client-side video encoding to **MP4 (H.264)** or **WebM (VP9)** in 1080p, 720p, or 4K with frame-by-frame progress.
-- 📱 **Multi-Aspect Ratio**: Instant switching between **16:9 Landscape**, **9:16 Shorts/TikTok**, **1:1 Square**, and **21:9 Cinema**.
-- 🔒 **100% Private & Serverless**: All media processing, AI transcription, and video rendering happen entirely inside the user's browser.
+- 🎞️ **Multi-Track Timeline**: Unlimited layered tracks (Video, Audio, Text, Stickers, Transitions, Effects) with precise frame snapping, splitting, trimming, and dragging.
+- ⚡ **Real-Time WebGL Compositor & Preview**: 60 FPS playback with transformations, rotations, blend modes, masks, and chroma keying.
+- 🎨 **Visual Effects & Filters**: Cinematic color grades, customizable masks, speed adjustment, and audio envelopes.
+- 🎵 **Integrated Audio & Waveforms**: Multi-track audio mixing, volume automation, and waveform visualization via Wavesurfer.
+- 🔤 **Subtitles & Rich Text Styles**: Rich typography, font formatting, and animated text overlays.
+- 💾 **100% Client-Side Privacy**: All video assets, cache, and project saves are securely stored in your browser using **IndexedDB** and **OPFS** (Origin Private File System).
+- 📦 **Hardware-Accelerated Export**: Render MP4 / WebM with custom aspect ratios (16:9, 9:16 Shorts/TikTok, 1:1, 4:5, 21:9).
+- ⌨️ **Comprehensive Keybindings**: Full keyboard shortcut management and customizable controls.
 
 ---
 
@@ -31,7 +31,7 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+Open [http://localhost:3000](http://localhost:3000) in your browser to start editing!
 
 ### 3. Build for Production
 
@@ -42,18 +42,17 @@ npm run start
 
 ---
 
-## 🛠️ Tech Stack
+## 🛠️ Architecture & Tech Stack
 
-- **Framework**: [Next.js 14 (App Router)](https://nextjs.org/)
-- **Language**: [TypeScript](https://www.typescriptlang.org/)
-- **Styling**: [Tailwind CSS](https://tailwindcss.com/)
-- **Icons**: [Lucide React](https://lucide.dev/)
-- **State Management**: [Zustand](https://github.com/pmndrs/zustand)
-- **Video Processing**: [FFmpeg WASM](https://ffmpegwasm.netlify.app/)
-- **On-Device AI**: [@xenova/transformers](https://huggingface.co/docs/transformers.js)
+- **Framework**: [Next.js 16](https://nextjs.org/) & [React 19](https://react.dev/)
+- **Core Engine**: OpenCut Architecture (`EditorCore`, `TimelineManager`, `PlaybackManager`, `RendererManager`)
+- **Video Timing & Math**: `opencut-wasm`
+- **State Management**: Zustand v5
+- **UI & Components**: Radix UI, Base UI, Lucide Icons, Hugeicons
+- **Storage**: IndexedDB & OPFS (zero server dependency required)
 
 ---
 
 ## 📄 License
 
-MIT License. Free for personal and commercial use.
+MIT License.
