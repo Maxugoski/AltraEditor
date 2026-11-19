@@ -15,6 +15,7 @@ A modern, high-performance, 100% client-side video editor powered by **Next.js 1
 - 📦 **Hardware-Accelerated Export**: Render MP4 / WebM with custom aspect ratios (16:9, 9:16 Shorts/TikTok, 1:1, 4:5, 21:9).
 - ⌨️ **Comprehensive Keybindings**: Full keyboard shortcut management and customizable controls.
 
+
 ---
 
 ## 🚀 Quick Start
